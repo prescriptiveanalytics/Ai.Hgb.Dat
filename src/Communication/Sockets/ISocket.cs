@@ -4,6 +4,8 @@
     HostAddress Address { get; }
 
     IEnumerable<string> Subscriptions { get; }
+
+    event EventHandler<EventArgs<Message>> MessageReceived;
     
     bool Connect();
 
@@ -15,6 +17,6 @@
 
     void Unsubscribe(string topic);
 
-    void SendMessage<T>(string topic, T message, string responseTopic = null);
+    void Send<T>(string topic, T message, string responseTopic = null);
   }
 }

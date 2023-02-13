@@ -25,7 +25,7 @@
     APACHEKAFKA
   }
 
-  public class MessageActionArgs : ICloneable {
+  public class Message : ICloneable {
 
     public string ClientId;
     public bool ProcessingFailed;
@@ -34,9 +34,9 @@
     public string Topic;
     public string ResponseTopic;
 
-    public MessageActionArgs() { }
+    public Message() { }
 
-    public MessageActionArgs(string clientId, bool processingFailed, string contentType, byte[] payload, string topic, string responseTopic) {
+    public Message(string clientId, bool processingFailed, string contentType, byte[] payload, string topic, string responseTopic) {
       ClientId = clientId;
       ProcessingFailed = processingFailed;
       ContentType = contentType;
@@ -46,7 +46,16 @@
     }
 
     public object Clone() {
-      return new MessageActionArgs(ClientId, ProcessingFailed, ContentType, Payload, Topic, ResponseTopic);
+      return new Message(ClientId, ProcessingFailed, ContentType, Payload, Topic, ResponseTopic);
     }
   }
+
+  public class EventArgs<T> : EventArgs {
+    public T Value { get; private set; }
+
+    public EventArgs(T value) {
+      Value = value;
+    }
+  }
+
 }
