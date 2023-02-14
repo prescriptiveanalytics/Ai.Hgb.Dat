@@ -17,7 +17,8 @@
     JSON,
     TOML,
     YAML,
-    PROTOBUF
+    PROTOBUF,
+    SIDL
   }
 
   public enum SocketType {
@@ -25,20 +26,24 @@
     APACHEKAFKA
   }
 
+  public enum QualityOfServiceLevel {
+    ExactlyOnce,
+    AtMostOnce,
+    AtLeastOnce
+  }
+
   public class Message : ICloneable {
 
-    public string ClientId;
-    public bool ProcessingFailed;
+    public string ClientId;    
     public string ContentType;
     public byte[] Payload;
     public string Topic;
     public string ResponseTopic;
 
-    public Message() { }
+    private Message() { }
 
-    public Message(string clientId, bool processingFailed, string contentType, byte[] payload, string topic, string responseTopic) {
-      ClientId = clientId;
-      ProcessingFailed = processingFailed;
+    public Message(string clientId, string contentType, byte[] payload, string topic, string responseTopic) {
+      ClientId = clientId;      
       ContentType = contentType;
       Payload = payload.ToArray();
       Topic = topic;
@@ -46,7 +51,7 @@
     }
 
     public object Clone() {
-      return new Message(ClientId, ProcessingFailed, ContentType, Payload, Topic, ResponseTopic);
+      return new Message(ClientId, ContentType, Payload, Topic, ResponseTopic);
     }
   }
 

@@ -1,10 +1,5 @@
 ﻿using MQTTnet;
 using MQTTnet.Server;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 // https://blog.behroozbc.ir/c-mqtt-broker-using-mqttnet-version-4
 namespace DCT.Communication {
@@ -31,19 +26,32 @@ namespace DCT.Communication {
       var optionsBuilder = new MqttServerOptionsBuilder()
         .WithDefaultEndpoint()
         .WithDefaultEndpointPort(Address.Port);
-
-
+      
       server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());      
-      return server.StartAsync();
+      
+      server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
+      server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
 
+      return server.StartAsync();
     }
 
     public void TearDown() {
-      throw new NotImplementedException();
+      var t = TearDownAsync();
+      t.Wait();
     }
 
     public Task TearDownAsync() {
-      throw new NotImplementedException();
+      return server.StopAsync();
+    }
+
+    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");      
+
+      return Task.CompletedTask;
+    }
+
+    private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {
+      return Task.CompletedTask;
     }
   }
 }
