@@ -63,4 +63,27 @@
     }
   }
 
+  public class ActionItem : ICloneable {
+
+    public Action<Message, CancellationToken> Action;
+    public CancellationToken Token;
+
+    public ActionItem(Action<Message, CancellationToken> action, CancellationToken token) {
+      Action = action;
+      Token = token;
+    }
+
+    public void Execute() {
+      
+    }
+
+    public void Abort() {
+      
+    }
+
+    public object Clone() {
+      return new ActionItem(Action, Token); 
+    }
+  }
+
 }

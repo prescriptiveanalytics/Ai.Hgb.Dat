@@ -17,11 +17,13 @@
 
     bool Disconnect();
 
+    void Abort();
+
     bool IsConnected();
 
-    void Subscribe(string? topic = null);
+    void Subscribe(string topic);
 
-    void Subscribe(Action<Message, CancellationToken> handler, string? topic = null);
+    void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, string? topic = null);
 
     void Unsubscribe(string? topic = null);
 
