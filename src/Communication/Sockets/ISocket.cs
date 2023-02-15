@@ -3,15 +3,19 @@
 
     HostAddress Address { get; }
 
-    IEnumerable<string> Subscriptions { get; }
+    IEnumerable<SubscriptionOptions> Subscriptions { get; }
 
     event EventHandler<EventArgs<Message>> MessageReceived;
 
-    string BaseTopic { get; set; }
+    SubscriptionOptions DefaultSubscriptionOptions { get; set; }
 
-    QualityOfServiceLevel QOSLevel { get; set; }    
+    PublicationOptions DefaultPublicationOptions { get; set; }
+
+    RequestOptions DefaultRequestOptions { get; set; }
 
     IPayloadConverter Converter { get; set; }
+
+    bool BlockingActionExecution { get; set; }
     
     bool Connect();
 
@@ -21,22 +25,22 @@
 
     bool IsConnected();
 
-    void Subscribe(string topic);
+    void Subscribe(SubscriptionOptions options);
 
-    void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, string? topic = null);
+    void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
 
-    void Unsubscribe(string? topic = null);
+    void Unsubscribe(string topic = null);
 
-    void Publish<T>(T message, string? topic = null);
+    void Publish<T>(T message, PublicationOptions options = null);
 
-    Task PublishAsync<T>(T message, string? topic = null);
+    Task PublishAsync<T>(T message, PublicationOptions options = null);
 
-    T Request<T>(string? topic = null);
+    T Request<T>(RequestOptions options = null);
 
-    Task<T> RequestAsync<T>(string? topic = null);
+    Task<T> RequestAsync<T>(RequestOptions options = null);
 
-    T1 Request<T1, T2>(T2 message, string? topic = null);
+    T1 Request<T1, T2>(T2 message, RequestOptions options = null);
 
-    Task<T1> RequestAsync<T1, T2>(T2 message, string? topic = null);
+    Task<T1> RequestAsync<T1, T2>(T2 message, RequestOptions options = null);
   }
 }

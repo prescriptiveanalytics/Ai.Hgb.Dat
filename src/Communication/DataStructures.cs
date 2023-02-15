@@ -27,9 +27,9 @@
   }
 
   public enum QualityOfServiceLevel {
-    ExactlyOnce,
     AtMostOnce,
-    AtLeastOnce
+    AtLeastOnce,
+    ExactlyOnce
   }
 
   public class Message : ICloneable {
@@ -73,16 +73,61 @@
       Token = token;
     }
 
-    public void Execute() {
-      
+    public object Clone() {
+      return new ActionItem(Action, Token); 
     }
+  }
 
-    public void Abort() {
-      
+  public class SubscriptionOptions : ICloneable {
+
+    public string Topic;
+    public QualityOfServiceLevel QosLevel;    
+
+    public SubscriptionOptions(string topic, QualityOfServiceLevel qosLevel) {
+      Topic = topic;
+      QosLevel = qosLevel;
     }
 
     public object Clone() {
-      return new ActionItem(Action, Token); 
+      return new SubscriptionOptions(Topic, QosLevel);
+    }
+  }
+
+  public class PublicationOptions : ICloneable {
+
+    public string Topic;
+    public string ResponseTopic;
+    public QualityOfServiceLevel QosLevel;
+
+    public PublicationOptions(string topic, string responseTopic, QualityOfServiceLevel qosLevel) {
+      Topic = topic;
+      ResponseTopic = responseTopic;
+      QosLevel = qosLevel;
+    }
+
+    public object Clone() {
+      return new PublicationOptions(Topic, ResponseTopic, QosLevel);
+    }
+  }
+
+  public class RequestOptions : ICloneable {
+
+    public string Topic;
+    public string ResponseTopic;
+    public bool GenerateResponseTopicPostfix;    
+
+    public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix) {
+      Topic = topic;
+      ResponseTopic = responseTopic;
+      GenerateResponseTopicPostfix = generateResponseTopicPostfix;      
+    }
+
+    public object Clone() {
+      return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix);
+    }
+
+    public SubscriptionOptions GetSubscriptionOptions() {
+      return new SubscriptionOptions(Topic, QualityOfServiceLevel.ExactlyOnce);
     }
   }
 

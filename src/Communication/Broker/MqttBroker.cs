@@ -51,6 +51,8 @@ namespace DCT.Communication {
     }
 
     private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}");
+      
       return Task.CompletedTask;
     }
   }
