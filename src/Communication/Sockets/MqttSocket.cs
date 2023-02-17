@@ -49,7 +49,9 @@ namespace DCT.Communication {
       set => blockingActionExecution = value;
     }
 
-    public event EventHandler<EventArgs<Message>> MessageReceived;
+    public event EventHandler<EventArgs<Message>> MessageReceived_BeforeRegisteredHandlers;
+
+    public event EventHandler<EventArgs<Message>> MessageReceived_AfterRegisteredHandlers;
 
     private HostAddress address;
     private IPayloadConverter converter;
@@ -66,7 +68,7 @@ namespace DCT.Communication {
     private Dictionary<string, List<ActionItem>> actions;
     private Dictionary<string, List<TaskCompletionSource<Message>>> promises;
 
-    public MqttSocket(HostAddress address, IPayloadConverter converter) {
+    public MqttSocket(HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
       this.address = address;
       this.converter = converter;
 
@@ -77,7 +79,11 @@ namespace DCT.Communication {
       pendingSubscriptions = new HashSet<SubscriptionOptions>();
       actions = new Dictionary<string, List<ActionItem>>();
       promises = new Dictionary<string, List<TaskCompletionSource<Message>>>();
-      blockingActionExecution = false;
+
+      this.defaultSubscriptionOptions = defSubOptions;
+      this.defaultPublicationOptions = defPubOptions;
+      this.defaultRequestOptions = defReqOptions;
+      this.blockingActionExecution = blockingActionExecution;
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
     }
@@ -90,10 +96,12 @@ namespace DCT.Communication {
         arg.ApplicationMessage.Topic, 
         arg.ApplicationMessage.ResponseTopic);
 
+      // fire message received event (before executing individually registered handlers)
+      OnMessageReceived_BeforeRegisteredHandlers(msg);
+
       // collect actions and promises to be executed
       var actionList = new List<ActionItem>();
       var promiseList = new List<TaskCompletionSource<Message>>();
-
 
       lock(actions) {
         foreach(var item in actions) {
@@ -144,7 +152,20 @@ namespace DCT.Communication {
         t = Task.CompletedTask;
       }
 
+      // fire message received event (before executing individually registered handlers)
+      OnMessageReceived_AfterRegisteredHandlers(msg);
+
       return t;
+    }
+
+    private void OnMessageReceived_BeforeRegisteredHandlers(Message message) {
+      var handler = MessageReceived_BeforeRegisteredHandlers;
+      if (handler != null) handler(this, new EventArgs<Message>(message));
+    }
+
+    private void OnMessageReceived_AfterRegisteredHandlers(Message message) {
+      var handler = MessageReceived_AfterRegisteredHandlers;
+      if (handler != null) handler(this, new EventArgs<Message>(message));
     }
 
     public bool Connect() {

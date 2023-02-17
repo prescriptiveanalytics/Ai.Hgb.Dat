@@ -19,11 +19,20 @@ namespace DCT.DemoApp {
       ISocket consumerOne = new MqttSocket(address, converter);
       ISocket consumerTwo = new MqttSocket(address, converter);
 
-      //broker.StartUp();
-      //producer.Connect();
-      //consumerOne.Connect();
-      //consumerTwo.Connect();
+      broker.StartUp();
+      Thread.Sleep(3000);
+      producer.Connect();
+      consumerOne.Connect();
+      consumerTwo.Connect();
 
+      // do work
+      Thread.Sleep(3000);
+
+
+      producer.Disconnect();
+      consumerOne.Disconnect();
+      consumerTwo.Disconnect();
+      broker.TearDown();
 
 
       sw.Stop();

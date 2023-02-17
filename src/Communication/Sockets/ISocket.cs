@@ -5,7 +5,9 @@
 
     IEnumerable<SubscriptionOptions> Subscriptions { get; }
 
-    event EventHandler<EventArgs<Message>> MessageReceived;
+    event EventHandler<EventArgs<Message>> MessageReceived_BeforeRegisteredHandlers;
+
+    event EventHandler<EventArgs<Message>> MessageReceived_AfterRegisteredHandlers;
 
     SubscriptionOptions DefaultSubscriptionOptions { get; set; }
 

@@ -31,9 +31,14 @@ namespace DCT.Communication {
       
       server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
       server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
+      server.ClientConnectedAsync += Server_ClientConnectedAsync;
+      server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
+      server.StartedAsync += Server_StartedAsync;
+      server.StoppedAsync += Server_StoppedAsync;
 
       return server.StartAsync();
     }
+
 
     public void TearDown() {
       var t = TearDownAsync();
@@ -44,15 +49,33 @@ namespace DCT.Communication {
       return server.StopAsync();
     }
 
-    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");      
+    private Task Server_StartedAsync(EventArgs arg) {
+      Console.WriteLine($"MqttBroker: Broker started.");
+      return Task.CompletedTask;
+    }
 
+    private Task Server_StoppedAsync(EventArgs arg) {
+      Console.WriteLine($"MqttBroker: Broker stopped.");
+      return Task.CompletedTask;
+    }
+
+    private Task Server_ClientConnectedAsync(ClientConnectedEventArgs arg) {
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} connected.");
+      return Task.CompletedTask;
+    }
+
+    private Task Server_ClientDisconnectedAsync(ClientDisconnectedEventArgs arg) {
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} disconnected.");
       return Task.CompletedTask;
     }
 
     private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}");
-      
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");
+      return Task.CompletedTask;
+    }
+
+    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");
       return Task.CompletedTask;
     }
   }
