@@ -6,6 +6,7 @@ using MQTTnet.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -99,13 +100,13 @@ namespace DCT.Communication {
       OnMessageReceived_BeforeRegisteredHandlers(msg);
 
       // collect actions and promises to be executed
-      var actionList = new List<ActionItem>();
+      var actionList = new List<Tuple<SubscriptionOptions, ActionItem>>();
       var promiseList = new List<TaskCompletionSource<IMessage>>();
 
       lock(actions) {
         foreach(var item in actions) {
           if(Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
-            actionList.AddRange(item.Value);
+            foreach (var ai in item.Value) actionList.Add(Tuple.Create(item.Key, ai));
           }
         }
       }
@@ -126,7 +127,8 @@ namespace DCT.Communication {
         {
           foreach (var item in actionList) {
             if (!cts.IsCancellationRequested) {
-              item.Action(msg, item.Token);
+              IMessage iMsg = CreateIMessage(msg, item.Item1.ContentType);
+              item.Item2.Action(iMsg, item.Item2.Token);
             }
           }
           foreach (var item in promiseList) {
@@ -140,7 +142,8 @@ namespace DCT.Communication {
         // v2: blocking (threadsafe behavior regarding processing order)
         foreach (var item in actionList) {
           if (!cts.IsCancellationRequested) {
-            item.Action(msg, item.Token);
+            IMessage iMsg = CreateIMessage(msg, item.Item1.ContentType);
+            item.Item2.Action(iMsg, item.Item2.Token);
           }
         }
         foreach (var item in promiseList) {
@@ -219,23 +222,25 @@ namespace DCT.Communication {
     }
 
     public void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      if (options != null) Subscribe(options);
-      else options = DefaultSubscriptionOptions;
+      var o = options != null ? options : DefaultSubscriptionOptions;
 
-      if (!actions.ContainsKey(options)) actions.Add(options, new List<ActionItem>());
+      if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
       CancellationToken tok = token.HasValue ? token.Value : cts.Token;
-      actions[options].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
+      actions[o].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
 
       Subscribe(options);
     }
 
     public void Subscribe<T>(Action<Message<T>, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      if (options != null) Subscribe(options);
-      else options = DefaultSubscriptionOptions;
+      var o = options != null ? options : DefaultSubscriptionOptions; // use new or default options as base
+      if (o.ContentType != typeof(T)) { // create new options if requested type does not match the base
+        o = (SubscriptionOptions)o.Clone();
+        o.ContentType = typeof(T);
+      }
 
-      if (!actions.ContainsKey(options)) actions.Add(options, new List<ActionItem>());
+      if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
       CancellationToken tok = token.HasValue ? token.Value : cts.Token;
-      actions[options].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
+      actions[o].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
 
       Subscribe(options);
     }
@@ -334,6 +339,18 @@ namespace DCT.Communication {
       if (qosl == QualityOfServiceLevel.AtMostOnce) return MqttQualityOfServiceLevel.AtMostOnce;
       else if (qosl == QualityOfServiceLevel.AtLeastOnce) return MqttQualityOfServiceLevel.AtLeastOnce;
       else return MqttQualityOfServiceLevel.ExactlyOnce;
+    }
+
+    private IMessage CreateIMessage(Message msg, Type type) {
+      if (type == null) return msg;
+
+      Type message_genericTypeDef = typeof(Message<>);
+      Type[] typeArgs = { type };
+      var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
+      var instance = (Message<object>)Activator.CreateInstance(requestedType);
+
+      instance.Content = converter.Deserialize(msg.Payload, type);
+      return instance;
     }
     #endregion helper
   }

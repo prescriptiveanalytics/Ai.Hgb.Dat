@@ -20,6 +20,10 @@ namespace DCT.Communication {
       return dser.Deserialize<T>(Encoding.UTF8.GetString(payload));
     }
 
+    public object Deserialize(byte[] payload, Type type) {
+      return dser.Deserialize(Encoding.UTF8.GetString(payload), type);
+    }
+
     public byte[] Serialize<T>(T payload) {
       return Encoding.UTF8.GetBytes(ser.Serialize(payload));
     }

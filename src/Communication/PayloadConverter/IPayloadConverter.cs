@@ -4,5 +4,7 @@
 
     T Deserialize<T>(byte[] payload);
 
+    object Deserialize(byte[] payload, Type type = null);
+
   }
 }

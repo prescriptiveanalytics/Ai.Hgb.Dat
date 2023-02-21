@@ -123,9 +123,9 @@ namespace DCT.Communication {
 
     public string Topic;
     public QualityOfServiceLevel QosLevel;
-    public string ContentType;
+    public Type ContentType;
 
-    public SubscriptionOptions(string topic, QualityOfServiceLevel qosLevel, string contentType = null) {
+    public SubscriptionOptions(string topic, QualityOfServiceLevel qosLevel, Type contentType = null) {
       Topic = topic;
       QosLevel = qosLevel;
       ContentType = contentType;
