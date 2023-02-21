@@ -5,9 +5,9 @@
 
     IEnumerable<SubscriptionOptions> Subscriptions { get; }
 
-    event EventHandler<EventArgs<Message>> MessageReceived_BeforeRegisteredHandlers;
+    event EventHandler<EventArgs<IMessage>> MessageReceived_BeforeRegisteredHandlers;
 
-    event EventHandler<EventArgs<Message>> MessageReceived_AfterRegisteredHandlers;
+    event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
     SubscriptionOptions DefaultSubscriptionOptions { get; set; }
 
@@ -30,6 +30,8 @@
     void Subscribe(SubscriptionOptions options);
 
     void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
+
+    void Subscribe<T>(Action<Message<T>, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
 
     void Unsubscribe(string topic = null);
 

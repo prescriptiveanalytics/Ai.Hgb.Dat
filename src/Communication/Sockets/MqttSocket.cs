@@ -9,10 +9,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-// TODO: Default sending QOS?
-// TODO: blocking action flag
-// TODO: sub/pending handling
-// TODO: implement all open stubs
+// TODO: check feasibility of IMessage
+// TODO: check feasibility of ActionItem<T> etc.
+// TODO: add subscriptionOptions to actions
 
 namespace DCT.Communication {
   public class MqttSocket : ISocket {
@@ -49,9 +48,9 @@ namespace DCT.Communication {
       set => blockingActionExecution = value;
     }
 
-    public event EventHandler<EventArgs<Message>> MessageReceived_BeforeRegisteredHandlers;
+    public event EventHandler<EventArgs<IMessage>> MessageReceived_BeforeRegisteredHandlers;
 
-    public event EventHandler<EventArgs<Message>> MessageReceived_AfterRegisteredHandlers;
+    public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
     private HostAddress address;
     private IPayloadConverter converter;
@@ -65,8 +64,8 @@ namespace DCT.Communication {
     private RequestOptions defaultRequestOptions;
     private bool blockingActionExecution;
 
-    private Dictionary<string, List<ActionItem>> actions;
-    private Dictionary<string, List<TaskCompletionSource<Message>>> promises;
+    private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
+    private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
     public MqttSocket(HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
       this.address = address;
@@ -77,8 +76,8 @@ namespace DCT.Communication {
 
       subscriptions = new HashSet<SubscriptionOptions>();
       pendingSubscriptions = new HashSet<SubscriptionOptions>();
-      actions = new Dictionary<string, List<ActionItem>>();
-      promises = new Dictionary<string, List<TaskCompletionSource<Message>>>();
+      actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
+      promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
 
       this.defaultSubscriptionOptions = defSubOptions;
       this.defaultPublicationOptions = defPubOptions;
@@ -101,11 +100,11 @@ namespace DCT.Communication {
 
       // collect actions and promises to be executed
       var actionList = new List<ActionItem>();
-      var promiseList = new List<TaskCompletionSource<Message>>();
+      var promiseList = new List<TaskCompletionSource<IMessage>>();
 
       lock(actions) {
         foreach(var item in actions) {
-          if(Misc.CompareTopics(item.Key, msg.Topic)) {
+          if(Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
             actionList.AddRange(item.Value);
           }
         }
@@ -113,8 +112,8 @@ namespace DCT.Communication {
 
       lock(promises) {
         foreach(var item in promises) {
-          if(Misc.CompareTopics(item.Key, msg.Topic)) {
-            promiseList.AddRange(item.Value);
+          if(Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+            promiseList.Add(item.Value);
           }
         }
       }
@@ -152,20 +151,20 @@ namespace DCT.Communication {
         t = Task.CompletedTask;
       }
 
-      // fire message received event (before executing individually registered handlers)
+      // fire message received event (after executing individually registered handlers)
       OnMessageReceived_AfterRegisteredHandlers(msg);
 
       return t;
     }
 
-    private void OnMessageReceived_BeforeRegisteredHandlers(Message message) {
+    private void OnMessageReceived_BeforeRegisteredHandlers(IMessage message) {
       var handler = MessageReceived_BeforeRegisteredHandlers;
-      if (handler != null) handler(this, new EventArgs<Message>(message));
+      if (handler != null) handler(this, new EventArgs<IMessage>(message));
     }
 
-    private void OnMessageReceived_AfterRegisteredHandlers(Message message) {
+    private void OnMessageReceived_AfterRegisteredHandlers(IMessage message) {
       var handler = MessageReceived_AfterRegisteredHandlers;
-      if (handler != null) handler(this, new EventArgs<Message>(message));
+      if (handler != null) handler(this, new EventArgs<IMessage>(message));
     }
 
     public bool Connect() {
@@ -223,9 +222,22 @@ namespace DCT.Communication {
       if (options != null) Subscribe(options);
       else options = DefaultSubscriptionOptions;
 
-      if (!actions.ContainsKey(options.Topic)) actions.Add(options.Topic, new List<ActionItem>());
+      if (!actions.ContainsKey(options)) actions.Add(options, new List<ActionItem>());
       CancellationToken tok = token.HasValue ? token.Value : cts.Token;
-      actions[options.Topic].Add(new ActionItem(handler, tok));
+      actions[options].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
+
+      Subscribe(options);
+    }
+
+    public void Subscribe<T>(Action<Message<T>, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
+      if (options != null) Subscribe(options);
+      else options = DefaultSubscriptionOptions;
+
+      if (!actions.ContainsKey(options)) actions.Add(options, new List<ActionItem>());
+      CancellationToken tok = token.HasValue ? token.Value : cts.Token;
+      actions[options].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
+
+      Subscribe(options);
     }
 
     public void Unsubscribe(string topic = null) {
@@ -278,16 +290,15 @@ namespace DCT.Communication {
 
     public async Task<T1> RequestAsync<T1, T2>(T2 message, RequestOptions options = null) {
       // parse options
-      var o = options != null ? options : DefaultRequestOptions;
+      var o = options != null ? options : (RequestOptions)DefaultRequestOptions.Clone();
       var rt = o.GenerateResponseTopicPostfix 
         ? string.Concat(o.ResponseTopic, "/", Misc.GenerateId(10))
         : o.ResponseTopic;
       o.ResponseTopic= rt;
 
       // configure promise
-      var promise = new TaskCompletionSource<Message>();
-      if (!promises.ContainsKey(o.ResponseTopic)) promises.Add(o.ResponseTopic, new List<TaskCompletionSource<Message>>());
-      promises[o.ResponseTopic].Add(promise);
+      var promise = new TaskCompletionSource<IMessage>();
+      promises.Add(o, promise);      
       Subscribe(o.GetSubscriptionOptions());
 
       // build message
@@ -312,7 +323,7 @@ namespace DCT.Communication {
 
       // deregister promise handling
       Unsubscribe(o.ResponseTopic);      
-      promises.Remove(o.ResponseTopic);
+      promises.Remove(o);
 
       // deserialize and return response
       return converter.Deserialize<T1>(response.Payload);

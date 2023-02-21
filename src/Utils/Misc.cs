@@ -40,5 +40,8 @@ namespace DCT.Utils {
       return true;
     }
 
+    public static T CreateInstance<T>(Type t) {
+      return (T)Activator.CreateInstance(t);
+    }
   }
 }
