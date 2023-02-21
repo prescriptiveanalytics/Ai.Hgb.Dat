@@ -29,9 +29,9 @@
 
     void Subscribe(SubscriptionOptions options);
 
-    void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
+    void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
 
-    void Subscribe<T>(Action<Message<T>, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
+    void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
 
     void Unsubscribe(string topic = null);
 

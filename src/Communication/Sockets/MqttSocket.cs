@@ -10,9 +10,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-// TODO: check feasibility of IMessage
-// TODO: check feasibility of ActionItem<T> etc.
-// TODO: add subscriptionOptions to actions
+// TODO: check feasibility of IMessage, Message<T>
+// TODO: check if blocking execution has any effect
 
 namespace DCT.Communication {
   public class MqttSocket : ISocket {
@@ -85,6 +84,8 @@ namespace DCT.Communication {
       this.defaultRequestOptions = defReqOptions;
       this.blockingActionExecution = blockingActionExecution;
 
+      if(defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
+
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
     }
 
@@ -121,7 +122,7 @@ namespace DCT.Communication {
 
       // execute collected actions and promises
       Task t;
-      if(blockingActionExecution) {
+      if(!blockingActionExecution) {
         // v1: async (intended socket behavior)
         t = Task.Factory.StartNew(() =>
         {
@@ -213,7 +214,9 @@ namespace DCT.Communication {
     }
 
     public void Subscribe(SubscriptionOptions options) {
-      if(IsConnected()) {
+      var o = options != null ? options : DefaultSubscriptionOptions;
+
+      if (IsConnected()) {
         subscriptions.Add(options);
         client.SubscribeAsync(options.Topic, GetQosLevel(options.QosLevel)).Wait(cts.Token);
       } else {
@@ -221,17 +224,17 @@ namespace DCT.Communication {
       }
     }
 
-    public void Subscribe(Action<Message, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
+    public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
       var o = options != null ? options : DefaultSubscriptionOptions;
 
       if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
       CancellationToken tok = token.HasValue ? token.Value : cts.Token;
-      actions[o].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
+      actions[o].Add(new ActionItem(handler, tok));
 
-      Subscribe(options);
+      Subscribe(o);
     }
 
-    public void Subscribe<T>(Action<Message<T>, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
+    public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
       var o = options != null ? options : DefaultSubscriptionOptions; // use new or default options as base
       if (o.ContentType != typeof(T)) { // create new options if requested type does not match the base
         o = (SubscriptionOptions)o.Clone();
@@ -240,9 +243,9 @@ namespace DCT.Communication {
 
       if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
       CancellationToken tok = token.HasValue ? token.Value : cts.Token;
-      actions[o].Add(new ActionItem(handler as Action<IMessage, CancellationToken>, tok)); // TODO: check feasibility
+      actions[o].Add(new ActionItem(handler, tok));
 
-      Subscribe(options);
+      Subscribe(o);
     }
 
     public void Unsubscribe(string topic = null) {
@@ -342,15 +345,24 @@ namespace DCT.Communication {
     }
 
     private IMessage CreateIMessage(Message msg, Type type) {
-      if (type == null) return msg;
+      if (type == null) {
+        msg.Content = converter.Deserialize(msg.Payload);
+        return msg;
+      } else {
+        Type message_genericTypeDef = typeof(Message<>);
+        Type[] typeArgs = { type };
+        var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
+        var instance = (IMessage)Activator.CreateInstance(requestedType);
 
-      Type message_genericTypeDef = typeof(Message<>);
-      Type[] typeArgs = { type };
-      var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
-      var instance = (Message<object>)Activator.CreateInstance(requestedType);
-
-      instance.Content = converter.Deserialize(msg.Payload, type);
-      return instance;
+        instance.ClientId= msg.ClientId;
+        instance.Topic = msg.Topic;
+        instance.ResponseTopic = msg.ResponseTopic;
+        instance.Payload = msg.Payload.ToArray();
+        instance.ContentType = msg.ContentType;
+        
+        instance.Content = converter.Deserialize(msg.Payload, type);
+        return instance;
+      }
     }
     #endregion helper
   }

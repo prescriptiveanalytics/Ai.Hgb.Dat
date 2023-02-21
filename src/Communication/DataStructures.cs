@@ -40,6 +40,8 @@ namespace DCT.Communication {
     byte[] Payload { get; set; }
     string Topic { get; set; }
     string ResponseTopic { get; set; }
+
+    object Content { get; set; }
   }
 
   public class Message : IMessage {
@@ -49,8 +51,17 @@ namespace DCT.Communication {
     public byte[] Payload { get; set; }
     public string Topic { get; set; }
     public string ResponseTopic { get; set; }
+    public object Content { get; set; }
 
     public Message() { }
+
+    public Message(Message msg) {      
+      ClientId = msg.ClientId;
+      ContentType = msg.ContentType;
+      Payload = msg.Payload.ToArray();
+      Topic = msg.Topic;
+      ResponseTopic = ResponseTopic;
+    }
 
     public Message(string clientId, string contentType, byte[] payload, string topic, string responseTopic) {
       ClientId = clientId;      
@@ -67,9 +78,11 @@ namespace DCT.Communication {
 
   public class Message<T> : Message {
 
-    public T Content { get; set; }
+    public new T Content { get; set; }
 
-    public Message() {}
+    public Message() { }
+
+    public Message(Message msg) : base(msg) { }
 
     public Message(string clientId, string contentType, byte[] payload, string topic, string responseTopic, T content) 
       : base(clientId, contentType, payload, topic, responseTopic) {
@@ -101,21 +114,6 @@ namespace DCT.Communication {
 
     public object Clone() {
       return new ActionItem(Action, Token);
-    }
-  }
-
-  public class ActionItem<T> : ICloneable {
-
-    public Action<T, CancellationToken> Action;
-    public CancellationToken Token;
-
-    public ActionItem(Action<T, CancellationToken> action, CancellationToken token) {
-      Action = action;
-      Token = token;
-    }
-
-    public object Clone() {
-      return new ActionItem<T>(Action, Token); 
     }
   }
 

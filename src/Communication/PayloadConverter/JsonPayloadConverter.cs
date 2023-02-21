@@ -7,8 +7,8 @@ namespace DCT.Communication {
       return JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(payload));
     }
 
-    public object Deserialize(byte[] payload, Type type = null) {
-      return JsonSerializer.Deserialize(Encoding.UTF8.GetString(payload), type);
+    public object Deserialize(byte[] payload, Type type = null) {      
+      return JsonSerializer.Deserialize(Encoding.UTF8.GetString(payload), type != null ? type : typeof(object));
     }
 
     public byte[] Serialize<T>(T payload) {

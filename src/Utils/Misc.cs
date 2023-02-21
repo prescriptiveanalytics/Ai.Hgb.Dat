@@ -8,6 +8,7 @@ namespace DCT.Utils {
   public class Misc {
 
     private readonly static string charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+    private readonly static string charsetText = "abcdefghijklmnopqrstuvwxyz";
     private static Random rnd = new Random();
 
     public static string GenerateId(int length) {
@@ -17,6 +18,15 @@ namespace DCT.Utils {
         newId += charset[rnd.Next(0, charset.Length)];
       }
       return newId;
+    }
+
+    public static string GenerateText(int length) {
+      string newText = "";
+
+      for (int i = 0; i < length; i++) {
+        newText += charsetText[rnd.Next(0, charsetText.Length)];
+      }
+      return newText.Trim();
     }
 
     public static string GetLastTopic(string topicStr) {
