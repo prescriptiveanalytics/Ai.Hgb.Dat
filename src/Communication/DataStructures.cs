@@ -50,6 +50,7 @@ namespace DCT.Communication {
   public class Message : IMessage {
 
     public string ClientId { get; set; }
+    public string ClientName { get; set; }
     public string ContentType { get; set; }
     public byte[] Payload { get; set; }
     public string Topic { get; set; }
@@ -60,22 +61,24 @@ namespace DCT.Communication {
 
     public Message(Message msg) {      
       ClientId = msg.ClientId;
+      ClientName = msg.ClientName;
       ContentType = msg.ContentType;
-      Payload = msg.Payload.ToArray();
+      Payload = msg.Payload != null ? msg.Payload.ToArray() : msg.Payload;
       Topic = msg.Topic;
       ResponseTopic = ResponseTopic;
     }
 
-    public Message(string clientId, string contentType, byte[] payload, string topic, string responseTopic) {
-      ClientId = clientId;      
+    public Message(string clientId, string clientName, string contentType, byte[] payload, string topic, string responseTopic) {
+      ClientId = clientId;
+      ClientName = clientName;
       ContentType = contentType;
-      Payload = payload.ToArray();
+      Payload = payload != null ? payload.ToArray() : payload;
       Topic = topic;
       ResponseTopic = responseTopic;
     }
 
     public object Clone() {
-      return new Message(ClientId, ContentType, Payload, Topic, ResponseTopic);
+      return new Message(ClientId, ClientName, ContentType, Payload, Topic, ResponseTopic);
     }
   }
 
@@ -87,13 +90,13 @@ namespace DCT.Communication {
 
     public Message(Message msg) : base(msg) { }
 
-    public Message(string clientId, string contentType, byte[] payload, string topic, string responseTopic, T content) 
-      : base(clientId, contentType, payload, topic, responseTopic) {
+    public Message(string clientId, string clientName, string contentType, byte[] payload, string topic, string responseTopic, T content) 
+      : base(clientId, clientName, contentType, payload, topic, responseTopic) {
       Content = content;
     }
 
     public new object Clone() {
-      return new Message<T>(ClientId, ContentType, Payload, Topic, ResponseTopic, Content);
+      return new Message<T>(ClientId, ClientName, ContentType, Payload, Topic, ResponseTopic, Content);
     }
   }
 
@@ -179,8 +182,12 @@ namespace DCT.Communication {
       return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix);
     }
 
-    public SubscriptionOptions GetSubscriptionOptions() {
+    public SubscriptionOptions GetRequestSubscriptionOptions() {
       return new SubscriptionOptions(Topic, QualityOfServiceLevel.ExactlyOnce);
+    }
+
+    public SubscriptionOptions GetResponseSubscriptionOptions() {
+      return new SubscriptionOptions(ResponseTopic, QualityOfServiceLevel.ExactlyOnce);
     }
   }
 

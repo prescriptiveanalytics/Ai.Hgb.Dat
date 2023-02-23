@@ -1,6 +1,7 @@
 ﻿namespace DCT.Communication {
   public interface ISocket : ICloneable {
 
+    public string Name { get; set; }
     HostAddress Address { get; }
 
     IEnumerable<SubscriptionOptions> Subscriptions { get; }

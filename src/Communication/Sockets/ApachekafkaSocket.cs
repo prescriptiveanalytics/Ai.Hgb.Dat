@@ -1,9 +1,14 @@
 ﻿using Confluent.Kafka;
 using DCT.Utils;
 using System.Net;
+using System.Xml.Linq;
 
 namespace DCT.Communication {
   public class ApachekafkaSocket : ISocket {
+    public string Name {
+      get => name;
+      set => name = value;
+    }
     public HostAddress Address {
       get { return address; }
     }
@@ -41,6 +46,7 @@ namespace DCT.Communication {
 
     public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
+    private string name;
     private HostAddress address;
     private IPayloadConverter converter;
     private IProducer<Null, byte[]> producer;
@@ -58,7 +64,8 @@ namespace DCT.Communication {
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
 
-    public ApachekafkaSocket(HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+    public ApachekafkaSocket(string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+      this.name = name;
       this.address = address;
       this.converter = converter;
 
@@ -104,6 +111,7 @@ namespace DCT.Communication {
           var consumeResult = consumer.Consume(token); // cancellation throws exception
 
           var msg = new Message();
+          msg.ClientName = Name;
           msg.Topic = consumeResult.Topic;
           msg.Payload = consumeResult.Message.Value;
           // TODO: add additional meta info
@@ -178,7 +186,7 @@ namespace DCT.Communication {
     }
 
     public object Clone() {
-      return new ApachekafkaSocket(Address, Converter,
+      return new ApachekafkaSocket(Name, Address, Converter,
         (SubscriptionOptions)DefaultSubscriptionOptions.Clone(),
         (PublicationOptions)DefaultPublicationOptions.Clone(),
         (RequestOptions)DefaultRequestOptions.Clone());

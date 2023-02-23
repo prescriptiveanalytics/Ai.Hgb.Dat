@@ -5,19 +5,68 @@ namespace DCT.DemoApp {
 
   public class Program {
 
-    static HostAddress address;
     static IPayloadConverter converter;
 
     static void Main(string[] args) {
-      var cts = new CancellationTokenSource();
       var sw = new Stopwatch();
       sw.Start();
 
-      address = new HostAddress("127.0.0.1", 1883);
+      RunDemo_Mqtt_DocProducerConsumer();
+      //RunDemo_Mqtt_DocRequestResponse();
+
+      sw.Stop();
+      Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
+      Console.WriteLine();
+    }
+
+    public static void RunDemo_Mqtt_DocRequestResponse() {
+      var cts = new CancellationTokenSource();
+      HostAddress address = new HostAddress("127.0.0.1", 1883);
       converter = new JsonPayloadConverter();
 
       IBroker broker = new MqttBroker(address);
-      broker.StartUp();      
+      broker.StartUp();
+
+      string pubsubTopic = "demoapp/docs";
+      string respTopic = "demoapp/responses";
+      string reqTopic = "demoapp/docs";
+      var pubOptions = new PublicationOptions(pubsubTopic, respTopic, QualityOfServiceLevel.ExactlyOnce);
+      var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
+      var reqOptions = new RequestOptions(reqTopic, respTopic, true);
+
+      ISocket server = new MqttSocket("server", address, converter, null, pubOptions, reqOptions);
+      ISocket clientOne, clientTwo;
+      clientOne = new MqttSocket("clientOne", address, converter, null, pubOptions, reqOptions);
+      clientTwo = (MqttSocket)clientOne.Clone();
+      clientTwo.Name = "clientTwo";
+
+      server.Connect();
+      clientOne.Connect();
+      //clientTwo.Connect();
+
+      Thread.Sleep(1000);      
+
+      // do work
+      var serverTask = Task.Factory.StartNew(() => ServeDocuments(server, cts.Token), cts.Token);
+      var clientTaskOne = Task.Factory.StartNew(() => RequestDocuments(clientOne, cts.Token), cts.Token);
+
+
+      Console.WriteLine("Waiting for completion...");
+      Thread.Sleep(100000);
+      // tear down
+      server.Disconnect();
+      clientOne.Disconnect();
+      clientTwo.Disconnect();
+      broker.TearDown();
+    }
+
+    public static void RunDemo_Mqtt_DocProducerConsumer() {
+      var cts = new CancellationTokenSource();
+      HostAddress address = new HostAddress("127.0.0.1", 1883);
+      converter = new JsonPayloadConverter();
+
+      IBroker broker = new MqttBroker(address);
+      broker.StartUp();
 
       string pubsubTopic = "demoapp/docs";
       string respTopic = "demoapp/responses";
@@ -26,10 +75,11 @@ namespace DCT.DemoApp {
       var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
       var reqOptions = new RequestOptions(reqTopic, respTopic, true);
 
-      ISocket producerOne = new MqttSocket(address, converter, subOptions, pubOptions, reqOptions);
-      ISocket producerTwo = new MqttSocket(address, converter, subOptions, pubOptions, reqOptions);
-      ISocket consumerOne = new MqttSocket(address, converter, subOptions, pubOptions, reqOptions);
-      ISocket consumerTwo = new MqttSocket(address, converter, subOptions, pubOptions, reqOptions);
+      ISocket producerOne, producerTwo, consumerOne, consumerTwo;
+      producerOne = new MqttSocket("producerOne", address, converter, subOptions, pubOptions, reqOptions);
+      producerTwo = new MqttSocket("producerTwo", address, converter, subOptions, pubOptions, reqOptions);
+      consumerOne = new MqttSocket("consumerOne", address, converter, subOptions, pubOptions, reqOptions);
+      consumerTwo = new MqttSocket("consumerTwo", address, converter, subOptions, pubOptions, reqOptions);
 
       consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
       //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2
@@ -52,14 +102,32 @@ namespace DCT.DemoApp {
       consumerOne.Disconnect();
       consumerTwo.Disconnect();
       broker.TearDown();
-
-
-      sw.Stop();
-      Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
-      Console.WriteLine();
     }
 
-    public static void ProduceDocuments(ISocket socket) {
+    private static void RequestDocuments(ISocket socket, CancellationToken token) {
+      
+      for(int i = 0; i < 10; i++) {
+        var doc = socket.Request<Document>();
+        Console.WriteLine($"Processed doc: {doc}");
+      }
+    }
+
+    private static void ServeDocuments(ISocket socket, CancellationToken token) {
+      var rnd = new Random();
+      var o = socket.DefaultRequestOptions;
+      var count = 0;
+      
+      socket.Subscribe((IMessage docReq, CancellationToken token) => {
+        count = Interlocked.Increment(ref count);
+        var doc = new Document(count, "server", "lorem ipsum dolor");
+        Task.Delay(500 + rnd.Next(1000)).Wait();
+        Console.WriteLine($"Produced doc: {doc}");
+        var pOpt = new PublicationOptions(docReq.ResponseTopic, "", QualityOfServiceLevel.ExactlyOnce);
+        socket.Publish(doc, pOpt);
+      }, token, o.GetRequestSubscriptionOptions());
+    }
+
+    private static void ProduceDocuments(ISocket socket) {
       var rnd = new Random();
       var t = Task.Factory.StartNew(() =>
       {
@@ -74,8 +142,7 @@ namespace DCT.DemoApp {
       t.Wait();
     }
 
-
-    public static void ProcessDocument(IMessage docMsg, CancellationToken token) {
+    private static void ProcessDocument(IMessage docMsg, CancellationToken token) {
       Document doc = null;
       if (docMsg.Content != null && docMsg.Content is Document) doc = (Document)docMsg.Content;
       else doc = converter.Deserialize<Document>(docMsg.Payload);

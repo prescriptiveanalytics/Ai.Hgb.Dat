@@ -10,6 +10,11 @@ using MQTTnet.Protocol;
 
 namespace DCT.Communication {
   public class MqttSocket : ISocket {
+
+    public string Name {
+      get => name;
+      set => name = value;
+    }
     public HostAddress Address {
       get { return address; }
     }
@@ -47,6 +52,7 @@ namespace DCT.Communication {
 
     public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
+    private string name;
     private HostAddress address;
     private IPayloadConverter converter;
     private IManagedMqttClient client;
@@ -62,7 +68,8 @@ namespace DCT.Communication {
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
-    public MqttSocket(HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+    public MqttSocket(string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+      this.name = name;
       this.address = address;
       this.converter = converter;
 
@@ -85,20 +92,20 @@ namespace DCT.Communication {
     }
 
     public object Clone() {
-      return new MqttSocket(Address, Converter,
-        (SubscriptionOptions)DefaultSubscriptionOptions.Clone(),
-        (PublicationOptions)DefaultPublicationOptions.Clone(),
-        (RequestOptions)DefaultRequestOptions.Clone(),
+      return new MqttSocket(Name, Address, Converter,
+        (SubscriptionOptions)DefaultSubscriptionOptions?.Clone(),
+        (PublicationOptions)DefaultPublicationOptions?.Clone(),
+        (RequestOptions)DefaultRequestOptions?.Clone(),
         BlockingActionExecution);
     }
 
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
       // parse received message
-      var msg = new Message(arg.ClientId,
+      var msg = new Message(arg.ClientId, "",
         arg.ApplicationMessage.ContentType,
         arg.ApplicationMessage.Payload,
         arg.ApplicationMessage.Topic,
-        arg.ApplicationMessage.ResponseTopic);
+        arg.ApplicationMessage.ResponseTopic);      
 
       // fire message received event (before executing individually registered handlers)
       OnMessageReceived_BeforeRegisteredHandlers(msg);
@@ -117,7 +124,7 @@ namespace DCT.Communication {
 
       lock (promises) {
         foreach (var item in promises) {
-          if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+          if (Misc.CompareTopics(item.Key.ResponseTopic, msg.Topic)) {
             promiseList.Add(item.Value);
           }
         }
@@ -179,6 +186,7 @@ namespace DCT.Communication {
       if (IsConnected()) return true;
 
       var options = new MqttClientOptionsBuilder()
+        .WithClientId(Name)
         .WithTcpServer(address.Server, address.Port);
       var mgOptions = new ManagedMqttClientOptionsBuilder()
         .WithClientOptions(options.Build())
@@ -310,16 +318,18 @@ namespace DCT.Communication {
         : o.ResponseTopic;
       o.ResponseTopic = rt;
 
+
       // configure promise
       var promise = new TaskCompletionSource<IMessage>();
       promises.Add(o, promise);
-      Subscribe(o.GetSubscriptionOptions());
+      Subscribe(o.GetResponseSubscriptionOptions());
 
-      // build message
+      // build request message
       var appMessageBuilder = new MqttApplicationMessageBuilder()
         .WithTopic(o.Topic)
-        .WithResponseTopic(o.ResponseTopic)
-        .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce);
+        .WithUserProperty(Name, Name)
+        .WithResponseTopic(o.ResponseTopic);        
+        //.WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce);
 
       appMessageBuilder = message != null
         ? appMessageBuilder.WithPayload(converter.Serialize(message))
@@ -327,12 +337,13 @@ namespace DCT.Communication {
 
       var mappMessage = new ManagedMqttApplicationMessageBuilder()
         .WithApplicationMessage(appMessageBuilder.Build())
+        //.WithId(Guid.NewGuid())
         .Build();
 
-      // send message
+      // send request message
       await client.EnqueueAsync(mappMessage);
 
-      // await response
+      // await response message
       var response = await promise.Task;
 
       // deregister promise handling
