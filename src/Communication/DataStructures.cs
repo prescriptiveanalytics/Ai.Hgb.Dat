@@ -9,6 +9,9 @@ namespace DCT.Communication {
 
     public string Server;
     public int Port;
+    public string Address {
+      get => $"{Server}:{Port}";
+    }
 
     public override string ToString() {
       return $"{Server}:{Port}";
@@ -139,6 +142,15 @@ namespace DCT.Communication {
     public string Topic;
     public string ResponseTopic;
     public QualityOfServiceLevel QosLevel;
+
+    // TODO:
+    // mqtt broker: 1. maintain queue per topic; 2. setup own socket;
+    // 3. intercept subscriptions to queue topic add client-individual postfix, store subscriptions
+    // 4. intercept all queue-direct messages and do not dispatch them; instead resend them to client-individual-subscriptions
+    // 5. delete acknowledged messages
+    // mqtt client: check if topic uses work queue and send additional ack message after subscribed handler task(s) are completed
+    public bool UseWorkQueue; 
+
 
     public PublicationOptions(string topic, string responseTopic, QualityOfServiceLevel qosLevel) {
       Topic = topic;

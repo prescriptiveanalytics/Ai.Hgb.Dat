@@ -3,15 +3,10 @@ using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
 using MQTTnet.Protocol;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 // TODO: check feasibility of IMessage, Message<T>
 // TODO: check if blocking execution has any effect
+// TODO: implement UseWorkQeue (at subscriptions)
 
 namespace DCT.Communication {
   public class MqttSocket : ISocket {
@@ -25,12 +20,12 @@ namespace DCT.Communication {
 
     public SubscriptionOptions DefaultSubscriptionOptions {
       get => defaultSubscriptionOptions;
-      set => defaultSubscriptionOptions = value;             
-    }    
+      set => defaultSubscriptionOptions = value;
+    }
 
     public PublicationOptions DefaultPublicationOptions {
       get => defaultPublicationOptions;
-      set => defaultPublicationOptions = value;            
+      set => defaultPublicationOptions = value;
     }
 
     public RequestOptions DefaultRequestOptions {
@@ -40,9 +35,9 @@ namespace DCT.Communication {
 
     public IPayloadConverter Converter {
       get => converter;
-      set => converter = value;           
+      set => converter = value;
     }
-    
+
     public bool BlockingActionExecution {
       get => blockingActionExecution;
       set => blockingActionExecution = value;
@@ -84,17 +79,25 @@ namespace DCT.Communication {
       this.defaultRequestOptions = defReqOptions;
       this.blockingActionExecution = blockingActionExecution;
 
-      if(defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
+      if (defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
     }
 
+    public object Clone() {
+      return new MqttSocket(Address, Converter,
+        (SubscriptionOptions)DefaultSubscriptionOptions.Clone(),
+        (PublicationOptions)DefaultPublicationOptions.Clone(),
+        (RequestOptions)DefaultRequestOptions.Clone(),
+        BlockingActionExecution);
+    }
+
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
       // parse received message
-      var msg = new Message(arg.ClientId, 
-        arg.ApplicationMessage.ContentType, 
-        arg.ApplicationMessage.Payload, 
-        arg.ApplicationMessage.Topic, 
+      var msg = new Message(arg.ClientId,
+        arg.ApplicationMessage.ContentType,
+        arg.ApplicationMessage.Payload,
+        arg.ApplicationMessage.Topic,
         arg.ApplicationMessage.ResponseTopic);
 
       // fire message received event (before executing individually registered handlers)
@@ -104,17 +107,17 @@ namespace DCT.Communication {
       var actionList = new List<Tuple<SubscriptionOptions, ActionItem>>();
       var promiseList = new List<TaskCompletionSource<IMessage>>();
 
-      lock(actions) {
-        foreach(var item in actions) {
-          if(Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+      lock (actions) {
+        foreach (var item in actions) {
+          if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
             foreach (var ai in item.Value) actionList.Add(Tuple.Create(item.Key, ai));
           }
         }
       }
 
-      lock(promises) {
-        foreach(var item in promises) {
-          if(Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+      lock (promises) {
+        foreach (var item in promises) {
+          if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
             promiseList.Add(item.Value);
           }
         }
@@ -122,7 +125,7 @@ namespace DCT.Communication {
 
       // execute collected actions and promises
       Task t;
-      if(!blockingActionExecution) {
+      if (!blockingActionExecution) {
         // v1: async (intended socket behavior)
         t = Task.Factory.StartNew(() =>
         {
@@ -139,7 +142,8 @@ namespace DCT.Communication {
           }
 
         }, cts.Token);
-      } else {
+      }
+      else {
         // v2: blocking (threadsafe behavior regarding processing order)
         foreach (var item in actionList) {
           if (!cts.IsCancellationRequested) {
@@ -180,9 +184,9 @@ namespace DCT.Communication {
         .WithClientOptions(options.Build())
         .Build();
 
-      client.StartAsync(mgOptions).Wait(cts.Token);     
+      client.StartAsync(mgOptions).Wait(cts.Token);
 
-      if(defaultSubscriptionOptions != null && defaultSubscriptionOptions.Topic != null)
+      if (defaultSubscriptionOptions != null && defaultSubscriptionOptions.Topic != null)
         client.SubscribeAsync(defaultSubscriptionOptions.Topic, GetQosLevel(defaultSubscriptionOptions.QosLevel)).Wait(cts.Token);
 
       foreach (var subscription in pendingSubscriptions) {
@@ -206,7 +210,7 @@ namespace DCT.Communication {
       cts.Cancel();
       client.StopAsync();
       client.Dispose();
-      client = null;      
+      client = null;
     }
 
     public bool IsConnected() {
@@ -219,7 +223,8 @@ namespace DCT.Communication {
       if (IsConnected()) {
         subscriptions.Add(options);
         client.SubscribeAsync(options.Topic, GetQosLevel(options.QosLevel)).Wait(cts.Token);
-      } else {
+      }
+      else {
         pendingSubscriptions.Add(options);
       }
     }
@@ -249,10 +254,11 @@ namespace DCT.Communication {
     }
 
     public void Unsubscribe(string topic = null) {
-      if(topic != null) {
+      if (topic != null) {
         client.UnsubscribeAsync(topic).Wait(cts.Token);
         subscriptions.RemoveWhere(s => s.Topic == topic);
-      } else {
+      }
+      else {
         client.UnsubscribeAsync(subscriptions.Select(x => x.Topic).ToList()).Wait(cts.Token);
         subscriptions.Clear();
       }
@@ -282,7 +288,7 @@ namespace DCT.Communication {
 
     public T Request<T>(RequestOptions options = null) {
       if (!IsConnected()) throw new Exception("MqttSocket: Socket must be connected before a blocking request can be made.");
-      
+
       return RequestAsync<T>(options).Result;
     }
 
@@ -292,21 +298,21 @@ namespace DCT.Communication {
 
     public T1 Request<T1, T2>(T2 message, RequestOptions options = null) {
       if (!IsConnected()) throw new Exception("MqttSocket: Socket must be connected before a blocking request can be made.");
-      
+
       return RequestAsync<T1, T2>(message, options).Result;
     }
 
     public async Task<T1> RequestAsync<T1, T2>(T2 message, RequestOptions options = null) {
       // parse options
       var o = options != null ? options : (RequestOptions)DefaultRequestOptions.Clone();
-      var rt = o.GenerateResponseTopicPostfix 
+      var rt = o.GenerateResponseTopicPostfix
         ? string.Concat(o.ResponseTopic, "/", Misc.GenerateId(10))
         : o.ResponseTopic;
-      o.ResponseTopic= rt;
+      o.ResponseTopic = rt;
 
       // configure promise
       var promise = new TaskCompletionSource<IMessage>();
-      promises.Add(o, promise);      
+      promises.Add(o, promise);
       Subscribe(o.GetSubscriptionOptions());
 
       // build message
@@ -330,7 +336,7 @@ namespace DCT.Communication {
       var response = await promise.Task;
 
       // deregister promise handling
-      Unsubscribe(o.ResponseTopic);      
+      Unsubscribe(o.ResponseTopic);
       promises.Remove(o);
 
       // deserialize and return response
@@ -338,6 +344,7 @@ namespace DCT.Communication {
     }
 
     #region helper
+
     private MqttQualityOfServiceLevel GetQosLevel(QualityOfServiceLevel qosl) {
       if (qosl == QualityOfServiceLevel.AtMostOnce) return MqttQualityOfServiceLevel.AtMostOnce;
       else if (qosl == QualityOfServiceLevel.AtLeastOnce) return MqttQualityOfServiceLevel.AtLeastOnce;
@@ -348,22 +355,24 @@ namespace DCT.Communication {
       if (type == null) {
         msg.Content = converter.Deserialize(msg.Payload);
         return msg;
-      } else {
+      }
+      else {
         Type message_genericTypeDef = typeof(Message<>);
         Type[] typeArgs = { type };
         var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
         var instance = (IMessage)Activator.CreateInstance(requestedType);
 
-        instance.ClientId= msg.ClientId;
+        instance.ClientId = msg.ClientId;
         instance.Topic = msg.Topic;
         instance.ResponseTopic = msg.ResponseTopic;
         instance.Payload = msg.Payload.ToArray();
         instance.ContentType = msg.ContentType;
-        
+
         instance.Content = converter.Deserialize(msg.Payload, type);
         return instance;
       }
     }
+
     #endregion helper
   }
 }

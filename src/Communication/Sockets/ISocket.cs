@@ -1,5 +1,5 @@
 ﻿namespace DCT.Communication {
-  public interface ISocket {
+  public interface ISocket : ICloneable {
 
     HostAddress Address { get; }
 

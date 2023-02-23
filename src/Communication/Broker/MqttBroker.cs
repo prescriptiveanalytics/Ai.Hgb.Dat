@@ -25,6 +25,7 @@ namespace DCT.Communication {
 
       var optionsBuilder = new MqttServerOptionsBuilder()
         .WithDefaultEndpoint()
+        .WithPersistentSessions() // enables QOS-Level 3        
         .WithDefaultEndpointPort(Address.Port);
       
       server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());      
@@ -35,7 +36,7 @@ namespace DCT.Communication {
       server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
       server.StartedAsync += Server_StartedAsync;
       server.StoppedAsync += Server_StoppedAsync;
-
+      
       return server.StartAsync();
     }
 
@@ -69,12 +70,12 @@ namespace DCT.Communication {
       return Task.CompletedTask;
     }
 
-    private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");
+    private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {      
+      Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");      
       return Task.CompletedTask;
     }
 
-    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {
+    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {      
       Console.WriteLine($"MqttBroker: Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");
       return Task.CompletedTask;
     }
