@@ -1,7 +1,6 @@
 ﻿using Confluent.Kafka;
 using DCT.Utils;
 using System.Net;
-using System.Text.RegularExpressions;
 
 namespace DCT.Communication {
   public class ApachekafkaSocket : ISocket {
@@ -59,7 +58,7 @@ namespace DCT.Communication {
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
 
-    public ApachekafkaSocket(HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null) {
+    public ApachekafkaSocket(HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
       this.address = address;
       this.converter = converter;
 
@@ -89,11 +88,93 @@ namespace DCT.Communication {
       this.defaultSubscriptionOptions = defSubOptions;
       this.defaultPublicationOptions = defPubOptions;
       this.defaultRequestOptions = defReqOptions;
-      //this.blockingActionExecution = blockingActionExecution;
+      this.blockingActionExecution = blockingActionExecution;
 
       if (defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
 
+
       //client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
+      Task.Factory.StartNew(() => ReceiveMessages(cts.Token), cts.Token);
+    }
+
+    private void ReceiveMessages(CancellationToken token) {
+      // TODO: currently QOS = AutoCommit
+      try {
+        while (!token.IsCancellationRequested) {
+          var consumeResult = consumer.Consume(token); // cancellation throws exception
+
+          var msg = new Message();
+          msg.Topic = consumeResult.Topic;
+          msg.Payload = consumeResult.Message.Value;
+          // TODO: add additional meta info
+
+          // fire message received event (before executing individually registered handlers)
+          OnMessageReceived_BeforeRegisteredHandlers(msg);
+
+          // collect actions and promises to be executed
+          var actionList = new List<Tuple<SubscriptionOptions, ActionItem>>();
+          var promiseList = new List<TaskCompletionSource<IMessage>>();
+
+          lock (actions) {
+            foreach (var item in actions) {
+              if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+                foreach (var ai in item.Value) actionList.Add(Tuple.Create(item.Key, ai));
+              }
+            }
+          }
+
+          lock (promises) {
+            foreach (var item in promises) {
+              if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+                promiseList.Add(item.Value);
+              }
+            }
+          }
+
+          // execute collected actions and promises
+          Task t;
+          if (!blockingActionExecution) {
+            // v1: async (intended socket behavior)
+            t = Task.Factory.StartNew(() =>
+            {
+              foreach (var item in actionList) {
+                if (!cts.IsCancellationRequested) {
+                  IMessage iMsg = CreateIMessage(msg, item.Item1.ContentType);
+                  item.Item2.Action(iMsg, item.Item2.Token);
+                }
+              }
+              foreach (var item in promiseList) {
+                if (!cts.IsCancellationRequested) {
+                  item.TrySetResult(msg);
+                }
+              }
+
+            }, cts.Token);
+          }
+          else {
+            // v2: blocking (threadsafe behavior regarding processing order)
+            foreach (var item in actionList) {
+              if (!cts.IsCancellationRequested) {
+                IMessage iMsg = CreateIMessage(msg, item.Item1.ContentType);
+                item.Item2.Action(iMsg, item.Item2.Token);
+              }
+            }
+            foreach (var item in promiseList) {
+              if (!cts.IsCancellationRequested) {
+                item.TrySetResult(msg);
+              }
+            }
+            t = Task.CompletedTask;
+          }
+
+          // fire message received event (after executing individually registered handlers)
+          OnMessageReceived_AfterRegisteredHandlers(msg);
+
+        }
+      }
+      catch (Exception ex) {
+        consumer.Close();
+      }
     }
 
     public object Clone() {
@@ -168,5 +249,31 @@ namespace DCT.Communication {
     public void Unsubscribe(string topic = null) {
       throw new NotImplementedException();
     }
+
+    #region helper
+
+    private IMessage CreateIMessage(Message msg, Type type) {
+      if (type == null) {
+        msg.Content = converter.Deserialize(msg.Payload);
+        return msg;
+      }
+      else {
+        Type message_genericTypeDef = typeof(Message<>);
+        Type[] typeArgs = { type };
+        var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
+        var instance = (IMessage)Activator.CreateInstance(requestedType);
+
+        instance.ClientId = msg.ClientId;
+        instance.Topic = msg.Topic;
+        instance.ResponseTopic = msg.ResponseTopic;
+        instance.Payload = msg.Payload.ToArray();
+        instance.ContentType = msg.ContentType;
+
+        instance.Content = converter.Deserialize(msg.Payload, type);
+        return instance;
+      }
+    }
+
+    #endregion helper
   }
 }
