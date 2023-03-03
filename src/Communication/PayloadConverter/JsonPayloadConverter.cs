@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 
-namespace DCT.Communication {
+namespace DAT.Communication {
   public class JsonPayloadConverter : IPayloadConverter {
     public T Deserialize<T>(byte[] payload) {
       if (payload == null) return default(T);

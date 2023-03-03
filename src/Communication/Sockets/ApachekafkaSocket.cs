@@ -1,9 +1,9 @@
 ﻿using Confluent.Kafka;
-using DCT.Utils;
+using DAT.Utils;
 using System.Net;
 using System.Xml.Linq;
 
-namespace DCT.Communication {
+namespace DAT.Communication {
   public class ApachekafkaSocket : ISocket {
     public string Name {
       get => name;

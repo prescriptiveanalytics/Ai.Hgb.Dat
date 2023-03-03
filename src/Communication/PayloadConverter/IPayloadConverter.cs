@@ -1,4 +1,4 @@
-﻿namespace DCT.Communication {
+﻿namespace DAT.Communication {
   public interface IPayloadConverter {
     byte[] Serialize<T>(T payload);
 

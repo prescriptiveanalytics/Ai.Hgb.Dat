@@ -1,4 +1,4 @@
-﻿namespace DCT.Communication {
+﻿namespace DAT.Communication {
   public interface ISocket : ICloneable {
 
     public string Name { get; set; }

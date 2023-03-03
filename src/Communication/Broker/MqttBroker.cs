@@ -2,7 +2,7 @@
 using MQTTnet.Server;
 
 // https://blog.behroozbc.ir/c-mqtt-broker-using-mqttnet-version-4
-namespace DCT.Communication {
+namespace DAT.Communication {
   public sealed class MqttBroker : IBroker {
     public HostAddress Address {
       get { return address; }
@@ -25,11 +25,10 @@ namespace DCT.Communication {
 
       var optionsBuilder = new MqttServerOptionsBuilder()
         .WithDefaultEndpoint()
-        .WithPersistentSessions() // enables QOS-Level 3        
+        .WithPersistentSessions() // enables QOS-Level 3                
         .WithDefaultEndpointPort(Address.Port);
-      
-      server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());      
-      
+            
+      server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());                  
       server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
       server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
       server.ClientConnectedAsync += Server_ClientConnectedAsync;

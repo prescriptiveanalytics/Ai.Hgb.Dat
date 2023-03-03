@@ -1,7 +1,7 @@
-﻿using DCT.Communication;
+﻿using DAT.Communication;
 using System.Diagnostics;
 
-namespace DCT.DemoApp {
+namespace DAT.DemoApp {
 
   public class Program {
 

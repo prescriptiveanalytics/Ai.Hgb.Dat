@@ -1,4 +1,4 @@
-﻿using DCT.Utils;
+﻿using DAT.Utils;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
@@ -8,7 +8,7 @@ using MQTTnet.Protocol;
 // TODO: check if blocking execution has any effect
 // TODO: implement UseWorkQeue (at subscriptions)
 
-namespace DCT.Communication {
+namespace DAT.Communication {
   public class MqttSocket : ISocket {
 
     public string Name {

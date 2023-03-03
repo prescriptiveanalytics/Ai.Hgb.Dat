@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DCT.Utils {
+﻿namespace DAT.Utils {
   public class Misc {
 
     private readonly static string charset = "abcdefghijklmnopqrstuvwxyz0123456789";

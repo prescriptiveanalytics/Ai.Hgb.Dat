@@ -1,6 +1,6 @@
 ﻿using System.Net.Mime;
 
-namespace DCT.Communication {
+namespace DAT.Communication {
   public struct HostAddress {
     public HostAddress(string server, int port) {
       Server = server;

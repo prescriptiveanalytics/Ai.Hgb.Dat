@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DCT.Communication {
+namespace DAT.Communication {
   public class PayloadConverter {
     private static Dictionary<PayloadFormat, Type> payloadFormatDict
       = new Dictionary<PayloadFormat, Type>

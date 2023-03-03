@@ -1,4 +1,4 @@
-﻿namespace DCT.Communication {
+﻿namespace DAT.Communication {
   public interface IBroker {
     HostAddress Address { get; }
 

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace DCT.Communication {
+namespace DAT.Communication {
   public class YamlPayloadConverter : IPayloadConverter {
 
     private ISerializer ser;
