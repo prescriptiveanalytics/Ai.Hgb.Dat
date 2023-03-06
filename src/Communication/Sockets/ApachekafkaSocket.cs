@@ -5,6 +5,12 @@ using System.Xml.Linq;
 
 namespace DAT.Communication {
   public class ApachekafkaSocket : ISocket {
+
+    public string Id {
+      get => id;
+      set => id = value;
+    }
+
     public string Name {
       get => name;
       set => name = value;
@@ -46,6 +52,7 @@ namespace DAT.Communication {
 
     public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
+    private string id;
     private string name;
     private HostAddress address;
     private IPayloadConverter converter;

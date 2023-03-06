@@ -34,9 +34,9 @@ namespace DAT.DemoApp {
       var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
       var reqOptions = new RequestOptions(reqTopic, respTopic, true);
 
-      ISocket server = new MqttSocket("server", address, converter, null, pubOptions, reqOptions);
+      ISocket server = new MqttSocket("server1", "server", address, converter, null, pubOptions, reqOptions);
       ISocket clientOne, clientTwo;
-      clientOne = new MqttSocket("clientOne", address, converter, null, pubOptions, reqOptions);
+      clientOne = new MqttSocket("clien1", "clientOne", address, converter, null, pubOptions, reqOptions);
       clientTwo = (MqttSocket)clientOne.Clone();
       clientTwo.Name = "clientTwo";
 
@@ -76,10 +76,10 @@ namespace DAT.DemoApp {
       var reqOptions = new RequestOptions(reqTopic, respTopic, true);
 
       ISocket producerOne, producerTwo, consumerOne, consumerTwo;
-      producerOne = new MqttSocket("producerOne", address, converter, subOptions, pubOptions, reqOptions);
-      producerTwo = new MqttSocket("producerTwo", address, converter, subOptions, pubOptions, reqOptions);
-      consumerOne = new MqttSocket("consumerOne", address, converter, subOptions, pubOptions, reqOptions);
-      consumerTwo = new MqttSocket("consumerTwo", address, converter, subOptions, pubOptions, reqOptions);
+      producerOne = new MqttSocket("producer1", "producerOne", address, converter, subOptions, pubOptions, reqOptions);
+      producerTwo = new MqttSocket("producer2", "producerTwo", address, converter, subOptions, pubOptions, reqOptions);
+      consumerOne = new MqttSocket("consumer1", "consumerOne", address, converter, subOptions, pubOptions, reqOptions);
+      consumerTwo = new MqttSocket("consumer2", "consumerTwo", address, converter, subOptions, pubOptions, reqOptions);
 
       consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
       //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2

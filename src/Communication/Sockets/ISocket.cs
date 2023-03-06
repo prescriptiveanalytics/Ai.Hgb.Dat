@@ -1,7 +1,8 @@
 ﻿namespace DAT.Communication {
   public interface ISocket : ICloneable {
 
-    public string Name { get; set; }
+    string Id { get; set; }
+    string Name { get; set; }
     HostAddress Address { get; }
 
     IEnumerable<SubscriptionOptions> Subscriptions { get; }

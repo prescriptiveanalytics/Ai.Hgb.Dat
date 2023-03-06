@@ -3,6 +3,7 @@ using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
 using MQTTnet.Protocol;
+using System.Net.Mime;
 
 // TODO: check feasibility of IMessage, Message<T>
 // TODO: check if blocking execution has any effect
@@ -10,6 +11,11 @@ using MQTTnet.Protocol;
 
 namespace DAT.Communication {
   public class MqttSocket : ISocket {
+
+    public string Id {
+      get => id;
+      set => id = value;
+    }
 
     public string Name {
       get => name;
@@ -52,6 +58,7 @@ namespace DAT.Communication {
 
     public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
+    private string id;
     private string name;
     private HostAddress address;
     private IPayloadConverter converter;
@@ -68,7 +75,8 @@ namespace DAT.Communication {
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
-    public MqttSocket(string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+    public MqttSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+      this.id = id;
       this.name = name;
       this.address = address;
       this.converter = converter;
@@ -92,7 +100,6 @@ namespace DAT.Communication {
     }
 
     public object Clone() {
-      return new MqttSocket(Name, Address, Converter,
         (SubscriptionOptions)DefaultSubscriptionOptions?.Clone(),
         (PublicationOptions)DefaultPublicationOptions?.Clone(),
         (RequestOptions)DefaultRequestOptions?.Clone(),
@@ -101,11 +108,8 @@ namespace DAT.Communication {
 
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
       // parse received message
-      var msg = new Message(arg.ClientId, "",
-        arg.ApplicationMessage.ContentType,
-        arg.ApplicationMessage.Payload,
-        arg.ApplicationMessage.Topic,
-        arg.ApplicationMessage.ResponseTopic);      
+      Message msg = converter.Deserialize<Message>(arg.ApplicationMessage.Payload);
+      
 
       // fire message received event (before executing individually registered handlers)
       OnMessageReceived_BeforeRegisteredHandlers(msg);
@@ -138,12 +142,12 @@ namespace DAT.Communication {
         {
           foreach (var item in actionList) {
             if (!cts.IsCancellationRequested) {
-              IMessage iMsg = CreateIMessage(msg, item.Item1.ContentType);
-              item.Item2.Action(iMsg, item.Item2.Token);
+              var imsg = CreateIMessage(msg, item.Item1.ContentType);
+              item.Item2.Action(imsg, item.Item2.Token);
             }
           }
           foreach (var item in promiseList) {
-            if (!cts.IsCancellationRequested) {
+            if (!cts.IsCancellationRequested) {                            
               item.TrySetResult(msg);
             }
           }
@@ -154,8 +158,8 @@ namespace DAT.Communication {
         // v2: blocking (threadsafe behavior regarding processing order)
         foreach (var item in actionList) {
           if (!cts.IsCancellationRequested) {
-            IMessage iMsg = CreateIMessage(msg, item.Item1.ContentType);
-            item.Item2.Action(iMsg, item.Item2.Token);
+            var imsg = CreateIMessage(msg, item.Item1.ContentType);
+            item.Item2.Action(imsg, item.Item2.Token);
           }
         }
         foreach (var item in promiseList) {
@@ -272,23 +276,26 @@ namespace DAT.Communication {
       }
     }
 
-    public void Publish<T>(T message, PublicationOptions options = null) {
-      var task = PublishAsync(message, options);
+    public void Publish<T>(T payload, PublicationOptions options = null) {
+      var task = PublishAsync(payload, options);
       task.Wait(cts.Token);
     }
 
-    public async Task PublishAsync<T>(T message, PublicationOptions options = null) {
+    public async Task PublishAsync<T>(T payload, PublicationOptions options = null) {
       var o = options != null ? options : DefaultPublicationOptions;
 
+      // setup message      
+      var msg = new Message<T>(Id, Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
+
       var appMessage = new MqttApplicationMessageBuilder()
-        .WithTopic(o.Topic)
-        .WithResponseTopic(o.ResponseTopic)
-        .WithPayload(converter.Serialize(message))
+        .WithTopic(msg.Topic)
+        .WithResponseTopic(msg.ResponseTopic)
+        .WithPayload(converter.Serialize(msg))
         .WithQualityOfServiceLevel(GetQosLevel(o.QosLevel))
         .Build();
 
       var mappMessage = new ManagedMqttApplicationMessageBuilder()
-        .WithApplicationMessage(appMessage)
+        .WithApplicationMessage(appMessage)        
         .Build();
 
       await client.EnqueueAsync(mappMessage);
@@ -310,7 +317,7 @@ namespace DAT.Communication {
       return RequestAsync<T1, T2>(message, options).Result;
     }
 
-    public async Task<T1> RequestAsync<T1, T2>(T2 message, RequestOptions options = null) {
+    public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {
       // parse options
       var o = options != null ? options : (RequestOptions)DefaultRequestOptions.Clone();
       var rt = o.GenerateResponseTopicPostfix
@@ -327,17 +334,20 @@ namespace DAT.Communication {
       // build request message
       var appMessageBuilder = new MqttApplicationMessageBuilder()
         .WithTopic(o.Topic)
+        .WithResponseTopic(o.ResponseTopic)
         .WithUserProperty(Name, Name)
-        .WithResponseTopic(o.ResponseTopic);        
-        //.WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce);
+        .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce);
 
-      appMessageBuilder = message != null
-        ? appMessageBuilder.WithPayload(converter.Serialize(message))
+      // setup message
+      string contentType = payload != null ? typeof(T2).FullName : "";
+      IMessage msg = new Message<T2>(Id, Name, o.Topic, o.ResponseTopic, contentType, payload);
+
+      appMessageBuilder = msg != null
+        ? appMessageBuilder.WithPayload(converter.Serialize(msg))
         : appMessageBuilder;
 
       var mappMessage = new ManagedMqttApplicationMessageBuilder()
-        .WithApplicationMessage(appMessageBuilder.Build())
-        //.WithId(Guid.NewGuid())
+        .WithApplicationMessage(appMessageBuilder.Build())        
         .Build();
 
       // send request message
