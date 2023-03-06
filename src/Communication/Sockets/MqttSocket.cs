@@ -100,6 +100,7 @@ namespace DAT.Communication {
     }
 
     public object Clone() {
+      return new MqttSocket(Id, Name, Address, Converter,
         (SubscriptionOptions)DefaultSubscriptionOptions?.Clone(),
         (PublicationOptions)DefaultPublicationOptions?.Clone(),
         (RequestOptions)DefaultRequestOptions?.Clone(),
