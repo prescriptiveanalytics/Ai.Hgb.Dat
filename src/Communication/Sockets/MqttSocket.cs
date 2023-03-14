@@ -65,6 +65,7 @@ namespace DAT.Communication {
     private IManagedMqttClient client;
     private CancellationTokenSource cts;
     private AutoResetEvent connected;
+    private AutoResetEvent disconnected;
 
     private HashSet<SubscriptionOptions> subscriptions;
     private HashSet<SubscriptionOptions> pendingSubscriptions;
@@ -76,7 +77,7 @@ namespace DAT.Communication {
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
-    public MqttSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+    public MqttSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false, bool connect = true) {
       this.id = id;
       this.name = name;
       this.address = address;
@@ -84,6 +85,7 @@ namespace DAT.Communication {
 
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
+      disconnected = new AutoResetEvent(false);
       client = new MqttFactory().CreateManagedMqttClient();
 
       subscriptions = new HashSet<SubscriptionOptions>();
@@ -100,8 +102,11 @@ namespace DAT.Communication {
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
       client.ConnectedAsync += Client_ConnectedAsync;
-    }
+      client.DisconnectedAsync += Client_DisconnectedAsync;
+      client.ConnectingFailedAsync += Client_ConnectingFailedAsync;
 
+      if(connect) Connect();
+    }
 
     public object Clone() {
       return new MqttSocket(Id, Name, Address, Converter,
@@ -111,8 +116,18 @@ namespace DAT.Communication {
         BlockingActionExecution);
     }
 
-    private Task Client_ConnectedAsync(MqttClientConnectedEventArgs arg) {
+    private Task Client_ConnectedAsync(MqttClientConnectedEventArgs arg) {      
       connected.Set();
+      return Task.CompletedTask;
+    }
+
+    private Task Client_DisconnectedAsync(MqttClientDisconnectedEventArgs arg) {
+      disconnected.Set();
+      return Task.CompletedTask;
+    }
+
+    private Task Client_ConnectingFailedAsync(ConnectingFailedEventArgs arg) {
+      if(arg.ConnectResult == null) Console.WriteLine("Connecting failed.");
       return Task.CompletedTask;
     }
 
@@ -222,8 +237,9 @@ namespace DAT.Communication {
     }
 
     public bool Disconnect() {
-      cts.Cancel();
-      client.StopAsync().Wait();
+      client.StopAsync().Wait(cts.Token);
+      cts.Cancel();      
+      disconnected.WaitOne();
       client.Dispose();
       client = null;
 
@@ -245,11 +261,11 @@ namespace DAT.Communication {
       var o = options != null ? options : DefaultSubscriptionOptions;
 
       if (IsConnected()) {
-        subscriptions.Add(options);
-        client.SubscribeAsync(options.Topic, GetQosLevel(options.QosLevel)).Wait(cts.Token);
+        subscriptions.Add(o);
+        client.SubscribeAsync(o.Topic, GetQosLevel(o.QosLevel)).Wait(cts.Token);
       }
       else {
-        pendingSubscriptions.Add(options);
+        pendingSubscriptions.Add(o);
       }
     }
 

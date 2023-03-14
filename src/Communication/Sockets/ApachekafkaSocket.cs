@@ -58,6 +58,10 @@ namespace DAT.Communication {
     private IPayloadConverter converter;
     private IProducer<Null, byte[]> producer;
     private IConsumer<Null, byte[]> consumer;
+    private ProducerConfig pConfig;
+    private ConsumerConfig cConfig;
+    private Task producerTask;
+    private Task consumerTask;
     private CancellationTokenSource cts;
 
     private HashSet<SubscriptionOptions> subscriptions;
@@ -71,27 +75,27 @@ namespace DAT.Communication {
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
 
-    public ApachekafkaSocket(string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false) {
+    public ApachekafkaSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false, bool connect = true) {
+      this.id = id;
       this.name = name;
       this.address = address;
       this.converter = converter;
 
       cts = new CancellationTokenSource();
-      var pConfig = new ProducerConfig
+      pConfig = new ProducerConfig
       {
         BootstrapServers = address.Address,
-        ClientId = Dns.GetHostName() + "_" + Misc.GenerateId(5)
+        ClientId = id,
+        //ApiVersionRequest = false
       };
-      var cConfig = new ConsumerConfig
+      cConfig = new ConsumerConfig
       {
         BootstrapServers = address.Address,
-        GroupId = Dns.GetHostName() + "_" + Misc.GenerateId(5),
+        GroupId = id,
         AutoOffsetReset = AutoOffsetReset.Earliest,
         AllowAutoCreateTopics = true
         //, SecurityProtocol = SecurityProtocol.Plaintext
       };
-      producer = new ProducerBuilder<Null, byte[]>(pConfig).Build();
-      consumer = new ConsumerBuilder<Null, byte[]>(cConfig).Build();
       
 
       subscriptions = new HashSet<SubscriptionOptions>();
@@ -105,10 +109,9 @@ namespace DAT.Communication {
       this.blockingActionExecution = blockingActionExecution;
 
       if (defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
+            
 
-
-      //client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
-      Task.Factory.StartNew(() => ReceiveMessages(cts.Token), cts.Token);
+      if (connect) Connect();
     }
 
     private void ReceiveMessages(CancellationToken token) {
@@ -117,11 +120,8 @@ namespace DAT.Communication {
         while (!token.IsCancellationRequested) {
           var consumeResult = consumer.Consume(token); // cancellation throws exception
 
-          var msg = new Message();
-          msg.ClientName = Name;
-          msg.Topic = consumeResult.Topic;
-          msg.Payload = consumeResult.Message.Value;
-          // TODO: add additional meta info
+          // parse received message
+          Message msg = converter.Deserialize<Message>(consumeResult.Message.Value);
 
           // fire message received event (before executing individually registered handlers)
           OnMessageReceived_BeforeRegisteredHandlers(msg);
@@ -193,7 +193,7 @@ namespace DAT.Communication {
     }
 
     public object Clone() {
-      return new ApachekafkaSocket(Name, Address, Converter,
+      return new ApachekafkaSocket(Id, Name, Address, Converter,
         (SubscriptionOptions)DefaultSubscriptionOptions.Clone(),
         (PublicationOptions)DefaultPublicationOptions.Clone(),
         (RequestOptions)DefaultRequestOptions.Clone());
@@ -210,27 +210,47 @@ namespace DAT.Communication {
     }
 
     public bool Connect() {
-      throw new NotImplementedException();
+      if(producer != null || consumer != null) return true;
+
+      producer = new ProducerBuilder<Null, byte[]>(pConfig).Build();
+      consumer = new ConsumerBuilder<Null, byte[]>(cConfig).Build();
+      consumerTask = Task.Factory.StartNew(() => ReceiveMessages(cts.Token), cts.Token);
+
+      return true;
     }
 
-    public bool Disconnect() {
-      throw new NotImplementedException();
+    public bool Disconnect() {      
+      producer.Dispose();
+      consumer.Close();      
+      consumer.Dispose();
+
+      return true;
     }
 
     public void Abort() {
-      throw new NotImplementedException();
+      producer.AbortTransaction();
+      cts.Cancel();
+      Disconnect();
     }
 
     public bool IsConnected() {
-      throw new NotImplementedException();
+      return producer != null || consumer != null;    
     }
 
-    public void Publish<T>(T message, PublicationOptions options = null) {
-      throw new NotImplementedException();
+    public void Publish<T>(T payload, PublicationOptions options = null) {
+      var task = PublishAsync(payload, options);
+      task.Wait(cts.Token);
     }
 
-    public Task PublishAsync<T>(T message, PublicationOptions options = null) {
-      throw new NotImplementedException();
+    public async Task PublishAsync<T>(T payload, PublicationOptions options = null) {
+      var o = options != null ? options : DefaultPublicationOptions;
+
+      // setup message      
+      var msg = new Message<T>(Id, Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
+      var kafkaMsg = new Message<Null, byte[]> { Value = converter.Serialize(msg) };
+
+      var t = producer.ProduceAsync(msg.Topic, kafkaMsg);
+      await t;
     }
 
     public T Request<T>(RequestOptions options = null) {
@@ -250,19 +270,43 @@ namespace DAT.Communication {
     }
 
     public void Subscribe(SubscriptionOptions options) {
-      throw new NotImplementedException();
+      var o = options != null ? options : DefaultSubscriptionOptions;
+
+      if (IsConnected()) {
+        subscriptions.Add(o);
+        consumer.Subscribe(o.Topic);        
+      }
+      else {
+        pendingSubscriptions.Add(o);
+      }
     }
 
     public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      throw new NotImplementedException();
+      var o = options != null ? options : DefaultSubscriptionOptions;
+
+      if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
+      CancellationToken tok = token.HasValue ? token.Value : cts.Token;
+      actions[o].Add(new ActionItem(handler, tok));
+
+      Subscribe(o);
     }
 
     public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      throw new NotImplementedException();
+      var o = options != null ? options : DefaultSubscriptionOptions; // use new or default options as base
+      if (o.ContentType != typeof(T)) { // create new options if requested type does not match the base
+        o = (SubscriptionOptions)o.Clone();
+        o.ContentType = typeof(T);
+      }
+
+      if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
+      CancellationToken tok = token.HasValue ? token.Value : cts.Token;
+      actions[o].Add(new ActionItem(handler, tok));
+
+      Subscribe(o);
     }
 
     public void Unsubscribe(string topic = null) {
-      throw new NotImplementedException();
+      consumer.Unsubscribe(); // TODO
     }
 
     #region helper

@@ -13,11 +13,38 @@ namespace DAT.DemoApp {
       sw.Start();
 
       //RunDemo_Mqtt_DocProducerConsumer();
-      RunDemo_Mqtt_DocRequestResponse();
+      //RunDemo_Mqtt_DocRequestResponse();
+      RunDemo_ApacheKafka_ProducerConsumer();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
+    }
+
+    public static void RunDemo_ApacheKafka_ProducerConsumer() {
+      var cts = new CancellationTokenSource();
+      int jobsPerProducer = 10;
+
+      //HostAddress address = new HostAddress("HAGNB342.fhooe.at", 9092);
+      HostAddress address = new HostAddress("localhost", 9092);
+      converter = new JsonPayloadConverter();
+
+      string pubsubTopic = "docs";
+      string respTopic = "responses";
+      string reqTopic = "specialdoc";
+      var pubOptions = new PublicationOptions(pubsubTopic, respTopic, QualityOfServiceLevel.ExactlyOnce);
+      var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
+      var reqOptions = new RequestOptions(reqTopic, respTopic, true);
+
+
+      ISocket producerOne, consumerOne;
+      producerOne = new ApachekafkaSocket("p1", "producerOne", address, converter, subOptions, pubOptions, reqOptions);
+
+      // do work
+      var t = Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
+      t.Wait();
+
+
     }
 
     public static void RunDemo_Mqtt_DocRequestResponse() {
@@ -92,15 +119,14 @@ namespace DAT.DemoApp {
       consumerOne = new MqttSocket("c1", "consumerOne", address, converter, subOptions, pubOptions, reqOptions);
       consumerTwo = new MqttSocket("c2", "consumerTwo", address, converter, subOptions, pubOptions, reqOptions);
 
-      consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
-      consumerTwo.Subscribe(ProcessDocument, cts.Token); // v1
-      //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2
-
-
       producerOne.Connect();
       producerTwo.Connect();
       consumerOne.Connect();
       consumerTwo.Connect();
+
+      consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
+      consumerTwo.Subscribe(ProcessDocument, cts.Token); // v1
+      //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2
 
       // do work
       Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
