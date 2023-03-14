@@ -5,16 +5,15 @@ namespace DAT.DemoApp {
 
   public class Program {
 
-    static IPayloadConverter converter;
-    //static SemaphoreSlim sem;
+    static IPayloadConverter converter;    
     static CountdownEvent ce;
 
     static void Main(string[] args) {
       var sw = new Stopwatch();
       sw.Start();
 
-      RunDemo_Mqtt_DocProducerConsumer();
-      //RunDemo_Mqtt_DocRequestResponse();
+      //RunDemo_Mqtt_DocProducerConsumer();
+      RunDemo_Mqtt_DocRequestResponse();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
@@ -23,6 +22,10 @@ namespace DAT.DemoApp {
 
     public static void RunDemo_Mqtt_DocRequestResponse() {
       var cts = new CancellationTokenSource();
+
+      int requestsPerClient = 10;
+      ce = new CountdownEvent(requestsPerClient * 2); // two clients
+
       HostAddress address = new HostAddress("127.0.0.1", 1883);
       converter = new JsonPayloadConverter();
 
@@ -36,25 +39,27 @@ namespace DAT.DemoApp {
       var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
       var reqOptions = new RequestOptions(reqTopic, respTopic, true);
 
-      ISocket server = new MqttSocket("server1", "server", address, converter, null, pubOptions, reqOptions);
+      ISocket server = new MqttSocket("s1", "server", address, converter, null, pubOptions, reqOptions);
       ISocket clientOne, clientTwo;
-      clientOne = new MqttSocket("clien1", "clientOne", address, converter, null, pubOptions, reqOptions);
-      clientTwo = (MqttSocket)clientOne.Clone();
-      clientTwo.Name = "clientTwo";
+      clientOne = new MqttSocket("c1", "clientOne", address, converter, null, pubOptions, reqOptions);
+      clientTwo = new MqttSocket("c2", "clientTwo", address, converter, null, pubOptions, reqOptions);     
 
       server.Connect();
       clientOne.Connect();
-      //clientTwo.Connect();
+      clientTwo.Connect();
 
-      Thread.Sleep(1000);      
+      //Thread.Sleep(1000);
 
       // do work
       var serverTask = Task.Factory.StartNew(() => ServeDocuments(server, cts.Token), cts.Token);
-      var clientTaskOne = Task.Factory.StartNew(() => RequestDocuments(clientOne, cts.Token), cts.Token);
+      var clientTaskOne = Task.Factory.StartNew(() => RequestDocuments(clientOne, cts.Token, requestsPerClient), cts.Token);
+      var clientTaskTwo = Task.Factory.StartNew(() => RequestDocuments(clientTwo, cts.Token, requestsPerClient), cts.Token);
 
 
       Console.WriteLine("Waiting for completion...");
-      Thread.Sleep(100000);
+      Task.WaitAll(new Task[] { clientTaskOne, clientTaskTwo });      
+
+
       // tear down
       server.Disconnect();
       clientOne.Disconnect();
@@ -114,11 +119,11 @@ namespace DAT.DemoApp {
       broker.TearDown();
     }
 
-    private static void RequestDocuments(ISocket socket, CancellationToken token) {
+    private static void RequestDocuments(ISocket socket, CancellationToken token, int jobCount) {
       
-      for(int i = 0; i < 10; i++) {
+      for(int i = 0; i < jobCount; i++) {
         var doc = socket.Request<Document>();
-        Console.WriteLine($"Processed doc: {doc}");
+        Console.WriteLine($"Client {socket.Name} rocessing doc: {doc}");        
       }
     }
 

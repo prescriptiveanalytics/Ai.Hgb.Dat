@@ -64,6 +64,7 @@ namespace DAT.Communication {
     private IPayloadConverter converter;
     private IManagedMqttClient client;
     private CancellationTokenSource cts;
+    private AutoResetEvent connected;
 
     private HashSet<SubscriptionOptions> subscriptions;
     private HashSet<SubscriptionOptions> pendingSubscriptions;
@@ -82,6 +83,7 @@ namespace DAT.Communication {
       this.converter = converter;
 
       cts = new CancellationTokenSource();
+      connected = new AutoResetEvent(false);
       client = new MqttFactory().CreateManagedMqttClient();
 
       subscriptions = new HashSet<SubscriptionOptions>();
@@ -97,7 +99,9 @@ namespace DAT.Communication {
       if (defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
+      client.ConnectedAsync += Client_ConnectedAsync;
     }
+
 
     public object Clone() {
       return new MqttSocket(Id, Name, Address, Converter,
@@ -105,6 +109,11 @@ namespace DAT.Communication {
         (PublicationOptions)DefaultPublicationOptions?.Clone(),
         (RequestOptions)DefaultRequestOptions?.Clone(),
         BlockingActionExecution);
+    }
+
+    private Task Client_ConnectedAsync(MqttClientConnectedEventArgs arg) {
+      connected.Set();
+      return Task.CompletedTask;
     }
 
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
@@ -194,10 +203,12 @@ namespace DAT.Communication {
         .WithClientId(Name)
         .WithTcpServer(address.Server, address.Port);
       var mgOptions = new ManagedMqttClientOptionsBuilder()
+        .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
         .WithClientOptions(options.Build())
         .Build();
 
       client.StartAsync(mgOptions).Wait(cts.Token);
+      connected.WaitOne();
 
       if (defaultSubscriptionOptions != null && defaultSubscriptionOptions.Topic != null)
         client.SubscribeAsync(defaultSubscriptionOptions.Topic, GetQosLevel(defaultSubscriptionOptions.QosLevel)).Wait(cts.Token);
