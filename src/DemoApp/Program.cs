@@ -6,6 +6,8 @@ namespace DAT.DemoApp {
   public class Program {
 
     static IPayloadConverter converter;
+    //static SemaphoreSlim sem;
+    static CountdownEvent ce;
 
     static void Main(string[] args) {
       var sw = new Stopwatch();
@@ -62,6 +64,10 @@ namespace DAT.DemoApp {
 
     public static void RunDemo_Mqtt_DocProducerConsumer() {
       var cts = new CancellationTokenSource();
+
+      int jobsPerProducer = 10;
+      ce = new CountdownEvent(40);
+
       HostAddress address = new HostAddress("127.0.0.1", 1883);
       converter = new JsonPayloadConverter();
 
@@ -76,12 +82,13 @@ namespace DAT.DemoApp {
       var reqOptions = new RequestOptions(reqTopic, respTopic, true);
 
       ISocket producerOne, producerTwo, consumerOne, consumerTwo;
-      producerOne = new MqttSocket("producer1", "producerOne", address, converter, subOptions, pubOptions, reqOptions);
-      producerTwo = new MqttSocket("producer2", "producerTwo", address, converter, subOptions, pubOptions, reqOptions);
-      consumerOne = new MqttSocket("consumer1", "consumerOne", address, converter, subOptions, pubOptions, reqOptions);
-      consumerTwo = new MqttSocket("consumer2", "consumerTwo", address, converter, subOptions, pubOptions, reqOptions);
+      producerOne = new MqttSocket("p1", "producerOne", address, converter, subOptions, pubOptions, reqOptions);
+      producerTwo = new MqttSocket("p2", "producerTwo", address, converter, subOptions, pubOptions, reqOptions);
+      consumerOne = new MqttSocket("c1", "consumerOne", address, converter, subOptions, pubOptions, reqOptions);
+      consumerTwo = new MqttSocket("c2", "consumerTwo", address, converter, subOptions, pubOptions, reqOptions);
 
       consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
+      consumerTwo.Subscribe(ProcessDocument, cts.Token); // v1
       //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2
 
 
@@ -91,11 +98,14 @@ namespace DAT.DemoApp {
       consumerTwo.Connect();
 
       // do work
-      ProduceDocuments(producerOne);
+      Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
+      Task.Factory.StartNew(() => ProduceDocuments(producerTwo, jobsPerProducer));
 
-
+      // wait: please note, true 
       Console.WriteLine("Waiting for completion...");
-      Thread.Sleep(10000);
+      ce.Wait();
+      
+
       // tear down
       producerOne.Disconnect();
       producerTwo.Disconnect();
@@ -119,7 +129,7 @@ namespace DAT.DemoApp {
       
       socket.Subscribe((IMessage docReq, CancellationToken token) => {
         count = Interlocked.Increment(ref count);
-        var doc = new Document(count, "server", "lorem ipsum dolor");
+        var doc = new Document(socket.Id + "-" + count, "server", "lorem ipsum dolor");
         Task.Delay(500 + rnd.Next(1000)).Wait();
         Console.WriteLine($"Produced doc: {doc}");
         var pOpt = new PublicationOptions(docReq.ResponseTopic, "", QualityOfServiceLevel.ExactlyOnce);
@@ -127,12 +137,12 @@ namespace DAT.DemoApp {
       }, token, o.GetRequestSubscriptionOptions());
     }
 
-    private static void ProduceDocuments(ISocket socket) {
+    private static void ProduceDocuments(ISocket socket, int jobCount) {
       var rnd = new Random();
       var t = Task.Factory.StartNew(() =>
       {
-        for (int i = 0; i < 10; i++) {
-          var doc = new Document(i+1, "one", "lorem ipsum dolor");
+        for (int i = 0; i < jobCount; i++) {
+          var doc = new Document(socket.Id + "-" + (i+1), socket.Name, "lorem ipsum dolor");
           Task.Delay(500 + rnd.Next(1000)).Wait();
           Console.WriteLine($"Produced doc: {doc}");
           socket.Publish(doc);
@@ -148,29 +158,33 @@ namespace DAT.DemoApp {
       else doc = converter.Deserialize<Document>(docMsg.Payload);
 
       var rnd = new Random();
-      Thread.Sleep(500 + rnd.Next(1000));      
+      Thread.Sleep(100 + rnd.Next(500));      
       if (token.IsCancellationRequested) {
         Console.WriteLine($"Cancelled processing document {doc.Id}.");
         return;
       }              
-      Console.WriteLine($"Processed doc: {doc.ToString()}");
+      
+      lock (ce) {
+        ce.Signal();
+        Console.WriteLine($"Processed doc: {doc.ToString()}");
+      }
     }
   }
 
   public class Document {
 
-    public int Id { get; set; }
+    public string Id { get; set; }
     public string Author { get; set; }
     public string Text { get; set; }
 
-    public Document(int id, string author, string text) {
+    public Document(string id, string author, string text) {
       Id = id;
       Author = author;
       Text = text;
     }
 
     public override string ToString() {
-      return $"{Id} / {Author}: {Text}";
+      return $"Id: {Id}, author: {Author}";
     }
   }
 }
