@@ -331,18 +331,18 @@ namespace DAT.Communication {
 
     public T Request<T>(RequestOptions options = null) {
       if (!IsConnected()) throw new Exception("MqttSocket: Socket must be connected before a blocking request can be made.");
-
+            
       return RequestAsync<T>(options).Result;
-    }
-
-    public async Task<T> RequestAsync<T>(RequestOptions options = null) {
-      return await RequestAsync<T, object>(null, options);
     }
 
     public T1 Request<T1, T2>(T2 message, RequestOptions options = null) {
       if (!IsConnected()) throw new Exception("MqttSocket: Socket must be connected before a blocking request can be made.");
 
       return RequestAsync<T1, T2>(message, options).Result;
+    }
+
+    public async Task<T> RequestAsync<T>(RequestOptions options = null) {         
+      return await RequestAsync<T, object>(null, options);
     }
 
     public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {

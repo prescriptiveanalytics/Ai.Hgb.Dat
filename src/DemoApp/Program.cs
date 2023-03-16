@@ -24,6 +24,7 @@ namespace DAT.DemoApp {
     public static void RunDemo_ApacheKafka_ProducerConsumer() {
       var cts = new CancellationTokenSource();
       int jobsPerProducer = 10;
+      ce = new CountdownEvent(jobsPerProducer);
 
       //HostAddress address = new HostAddress("HAGNB342.fhooe.at", 9092);
       HostAddress address = new HostAddress("localhost", 9092);
@@ -32,19 +33,30 @@ namespace DAT.DemoApp {
       string pubsubTopic = "docs";
       string respTopic = "responses";
       string reqTopic = "specialdoc";
+      //string pubsubTopic = "demoapp/docs";
+      //string respTopic = "demoapp/responses";
+      //string reqTopic = "demoapp/specialdoc";
       var pubOptions = new PublicationOptions(pubsubTopic, respTopic, QualityOfServiceLevel.ExactlyOnce);
       var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
       var reqOptions = new RequestOptions(reqTopic, respTopic, true);
 
 
       ISocket producerOne, consumerOne;
-      producerOne = new ApachekafkaSocket("p1", "producerOne", address, converter, subOptions, pubOptions, reqOptions);
+      producerOne = new ApachekafkaSocket("p1", "producerOne", address, converter, null, pubOptions, reqOptions);
+      consumerOne = new ApachekafkaSocket("c1", "consumerOne", address, converter, subOptions, pubOptions, reqOptions);
+
+      // necessary since confluent kafka's group coordination is weird
+      Thread.Sleep(10000);
 
       // do work
+      consumerOne.Subscribe(ProcessDocument, cts.Token);
       var t = Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
       t.Wait();
+      //ce.Wait();
+      Thread.Sleep(2000);
 
-
+      producerOne.Disconnect();
+      consumerOne.Disconnect();
     }
 
     public static void RunDemo_Mqtt_DocRequestResponse() {
