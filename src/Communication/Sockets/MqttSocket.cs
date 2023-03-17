@@ -5,10 +5,6 @@ using MQTTnet.Extensions.ManagedClient;
 using MQTTnet.Protocol;
 using System.Net.Mime;
 
-// TODO: check feasibility of IMessage, Message<T>
-// TODO: check if blocking execution has any effect
-// TODO: implement UseWorkQeue (at subscriptions)
-
 namespace DAT.Communication {
   public class MqttSocket : ISocket {
 
