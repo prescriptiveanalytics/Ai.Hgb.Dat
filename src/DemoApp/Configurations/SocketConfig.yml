@@ -1,0 +1,34 @@
+﻿Type: Socket
+Uri: "C:/"
+MonitorConfiguration: true
+MonitorIntervalMilliseconds: 1000
+
+
+
+# socket specific configuration:
+
+Id: p1
+Name: ProducerOne
+
+SocketType: MQTT
+
+#HostAddress:
+#	Name: "127.0.0.1"
+#	Port: 1883
+
+#BaseTopic: demo
+
+
+#PublicationOptions:
+#	Topic: docs
+#	ResponseTopic: responses
+#	QosLevel: ExactlyOnce
+
+#SubscriptionOptions:
+#	Topic: docs	
+#	QosLevel: ExactlyOnce
+
+#RequestOptions:
+#	Topic: docs
+#	ResponseTopic: responses	
+#	GenerateResponseTopicPostfix: true

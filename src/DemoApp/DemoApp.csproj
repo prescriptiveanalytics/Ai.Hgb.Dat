@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Communication\Communication.csproj" />
+    <ProjectReference Include="..\Configuration\Configuration.csproj" />
   </ItemGroup>
 
 </Project>

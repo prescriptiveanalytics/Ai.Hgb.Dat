@@ -2,19 +2,19 @@
 
 namespace DAT.Communication {
   public struct HostAddress {
-    public HostAddress(string server, int port) {
-      Server = server;
+    public HostAddress(string name, int port) {
+      Name = name;
       Port = port;
     }
 
-    public string Server;
+    public string Name;
     public int Port;
     public string Address {
-      get => $"{Server}:{Port}";
+      get => $"{Name}:{Port}";
     }
 
     public override string ToString() {
-      return $"{Server}:{Port}";
+      return $"{Name}:{Port}";
     }
   }
 
@@ -107,14 +107,6 @@ namespace DAT.Communication {
 
     public new object Clone() {
       return new Message<T>(ClientId, ClientName, Topic, ResponseTopic, ContentType, Payload, Content);
-    }
-  }
-
-  public class EventArgs<T> : EventArgs {
-    public T Value { get; private set; }
-
-    public EventArgs(T value) {
-      Value = value;
     }
   }
 

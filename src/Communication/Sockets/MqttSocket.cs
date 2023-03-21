@@ -1,4 +1,5 @@
-﻿using DAT.Utils;
+﻿using DAT.Configuration;
+using DAT.Utils;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
@@ -54,6 +55,8 @@ namespace DAT.Communication {
 
     public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
+    private SocketConfiguration configuration;
+
     private string id;
     private string name;
     private HostAddress address;
@@ -73,11 +76,21 @@ namespace DAT.Communication {
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
+    public MqttSocket(SocketConfiguration configuration) {
+      this.configuration = configuration;
+      this.configuration.ConfigurationChanged += Configuration_ConfigurationChanged; // react to config changes
+    }
+
+    private void Configuration_ConfigurationChanged(object sender, EventArgs<IConfiguration> e) {
+      // TODO: react to changes of pub/sub/req options
+      Console.WriteLine("Udating socket now...");
+    }
+
     public MqttSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false, bool connect = true) {
       this.id = id;
       this.name = name;
       this.address = address;
-      this.converter = converter;
+      this.converter = converter;      
 
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
@@ -212,7 +225,7 @@ namespace DAT.Communication {
 
       var options = new MqttClientOptionsBuilder()
         .WithClientId(Name)
-        .WithTcpServer(address.Server, address.Port);
+        .WithTcpServer(address.Name, address.Port);
       var mgOptions = new ManagedMqttClientOptionsBuilder()
         .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
         .WithClientOptions(options.Build())

@@ -1,4 +1,5 @@
 ﻿using DAT.Communication;
+using DAT.Configuration;
 using System.Diagnostics;
 
 namespace DAT.DemoApp {
@@ -14,11 +15,16 @@ namespace DAT.DemoApp {
 
       //RunDemo_Mqtt_DocProducerConsumer();
       //RunDemo_Mqtt_DocRequestResponse();
-      RunDemo_ApacheKafka_ProducerConsumer();
+      //RunDemo_ApacheKafka_ProducerConsumer();
+      RunDemo_ReadSocketConfiguration();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
+    }
+
+    public static void RunDemo_ReadSocketConfiguration() {
+      var config = Parser.Parse(@"..\..\..\Configurations\SocketConfig.yml");
     }
 
     public static void RunDemo_ApacheKafka_ProducerConsumer() {

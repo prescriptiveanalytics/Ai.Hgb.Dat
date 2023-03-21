@@ -1,4 +1,6 @@
-﻿namespace DAT.Communication {
+﻿using DAT.Utils;
+
+namespace DAT.Communication {
   public interface ISocket : ICloneable {
 
     string Id { get; set; }
