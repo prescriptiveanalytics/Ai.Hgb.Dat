@@ -21,6 +21,16 @@ namespace DAT.Configuration {
 
     public string SocketType { get; set; }
 
+    public HostAddress Broker { get; set; }
+
+    public string BaseTopic { get; set; }
+
+    public PublicationOptions DefaultPublicationOptions { get; set; }
+
+    public SubscriptionOptions DefaultSubscriptionOptions { get; set; }
+
+    public RequestOptions DefaultRequestOptions { get; set; }
+
     public SocketConfiguration() { }
 
     public void ChangeConfiguration(IConfiguration newConfiguration) {

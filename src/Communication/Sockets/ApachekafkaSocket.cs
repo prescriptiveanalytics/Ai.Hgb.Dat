@@ -1,4 +1,5 @@
 ﻿using Confluent.Kafka;
+using DAT.Configuration;
 using DAT.Utils;
 using System.Net;
 using System.Xml.Linq;

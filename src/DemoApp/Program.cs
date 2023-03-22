@@ -31,8 +31,7 @@ namespace DAT.DemoApp {
       var cts = new CancellationTokenSource();
       int jobsPerProducer = 10;
       ce = new CountdownEvent(jobsPerProducer);
-
-      //HostAddress address = new HostAddress("HAGNB342.fhooe.at", 9092);
+      
       HostAddress address = new HostAddress("localhost", 9092);
       converter = new JsonPayloadConverter();
 

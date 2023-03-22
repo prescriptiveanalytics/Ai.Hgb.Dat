@@ -1,4 +1,6 @@
-﻿namespace DAT.Communication {
+﻿using DAT.Configuration;
+
+namespace DAT.Communication {
   public interface IBroker {
     HostAddress Address { get; }
 

@@ -1,4 +1,5 @@
-﻿using DAT.Utils;
+﻿using DAT.Configuration;
+using DAT.Utils;
 
 namespace DAT.Communication {
   public interface ISocket : ICloneable {

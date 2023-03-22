@@ -12,23 +12,24 @@ Name: ProducerOne
 
 SocketType: MQTT
 
-#HostAddress:
-#	Name: "127.0.0.1"
-#	Port: 1883
+Broker:
+  Name: "127.0.0.1"
+  Port: 1883
 
-#BaseTopic: demo
+BaseTopic: demo
 
 
-#PublicationOptions:
-#	Topic: docs
-#	ResponseTopic: responses
-#	QosLevel: ExactlyOnce
+DefaultPublicationOptions:
+  Topic: docs
+  ResponseTopic: responses
+  QosLevel: ExactlyOnce
 
-#SubscriptionOptions:
-#	Topic: docs	
-#	QosLevel: ExactlyOnce
+DefaultSubscriptionOptions:
+  Topic: docs
+  QosLevel: ExactlyOnce
+  ContentTypeFullName: DAT.DemoApp.Document
 
-#RequestOptions:
-#	Topic: docs
-#	ResponseTopic: responses	
-#	GenerateResponseTopicPostfix: true
+DefaultRequestOptions:
+  Topic: docs
+  ResponseTopic: responses
+  GenerateResponseTopicPostfix: true

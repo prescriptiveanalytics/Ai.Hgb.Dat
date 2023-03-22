@@ -1,41 +1,7 @@
-﻿using System.Net.Mime;
+﻿using DAT.Configuration;
+using System.Net.Mime;
 
 namespace DAT.Communication {
-  public struct HostAddress {
-    public HostAddress(string name, int port) {
-      Name = name;
-      Port = port;
-    }
-
-    public string Name;
-    public int Port;
-    public string Address {
-      get => $"{Name}:{Port}";
-    }
-
-    public override string ToString() {
-      return $"{Name}:{Port}";
-    }
-  }
-
-  public enum PayloadFormat {
-    JSON,
-    TOML,
-    YAML,
-    PROTOBUF,
-    SIDL
-  }
-
-  public enum SocketType {
-    MQTT,
-    APACHEKAFKA
-  }
-
-  public enum QualityOfServiceLevel {
-    AtMostOnce,
-    AtLeastOnce,
-    ExactlyOnce
-  }
 
   public interface IMessage : ICloneable {
     string ClientId { get; set; }
@@ -124,73 +90,4 @@ namespace DAT.Communication {
       return new ActionItem(Action, Token);
     }
   }
-
-  public class SubscriptionOptions : ICloneable {
-
-    public string Topic;
-    public QualityOfServiceLevel QosLevel;
-    public Type ContentType;
-
-    public SubscriptionOptions(string topic, QualityOfServiceLevel qosLevel, Type contentType = null) {
-      Topic = topic;
-      QosLevel = qosLevel;
-      ContentType = contentType;
-    }
-
-    public object Clone() {
-      return new SubscriptionOptions(Topic, QosLevel);
-    }
-  }
-
-  public class PublicationOptions : ICloneable {
-
-    public string Topic;
-    public string ResponseTopic;
-    public QualityOfServiceLevel QosLevel;
-
-    // TODO:
-    // mqtt broker: 1. maintain queue per topic; 2. setup own socket;
-    // 3. intercept subscriptions to queue topic add client-individual postfix, store subscriptions
-    // 4. intercept all queue-direct messages and do not dispatch them; instead resend them to client-individual-subscriptions
-    // 5. delete acknowledged messages
-    // mqtt client: check if topic uses work queue and send additional ack message after subscribed handler task(s) are completed
-    public bool UseWorkQueue; 
-
-
-    public PublicationOptions(string topic, string responseTopic, QualityOfServiceLevel qosLevel) {
-      Topic = topic;
-      ResponseTopic = responseTopic;
-      QosLevel = qosLevel;
-    }
-
-    public object Clone() {
-      return new PublicationOptions(Topic, ResponseTopic, QosLevel);
-    }
-  }
-
-  public class RequestOptions : ICloneable {
-
-    public string Topic;
-    public string ResponseTopic;
-    public bool GenerateResponseTopicPostfix;    
-
-    public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix = true) {
-      Topic = topic;
-      ResponseTopic = responseTopic;
-      GenerateResponseTopicPostfix = generateResponseTopicPostfix;      
-    }
-
-    public object Clone() {
-      return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix);
-    }
-
-    public SubscriptionOptions GetRequestSubscriptionOptions() {
-      return new SubscriptionOptions(Topic, QualityOfServiceLevel.ExactlyOnce);
-    }
-
-    public SubscriptionOptions GetResponseSubscriptionOptions() {
-      return new SubscriptionOptions(ResponseTopic, QualityOfServiceLevel.ExactlyOnce);
-    }
-  }
-
 }

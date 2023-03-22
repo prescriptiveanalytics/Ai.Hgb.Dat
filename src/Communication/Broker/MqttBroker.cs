@@ -1,4 +1,5 @@
-﻿using MQTTnet;
+﻿using DAT.Configuration;
+using MQTTnet;
 using MQTTnet.Server;
 
 // https://blog.behroozbc.ir/c-mqtt-broker-using-mqttnet-version-4

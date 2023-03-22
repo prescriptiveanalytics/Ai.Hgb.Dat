@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace DAT.Configuration {
   public class YamlParser : IParser {
@@ -12,8 +13,17 @@ namespace DAT.Configuration {
     private IDeserializer dser;
 
     public YamlParser() {
-      ser = new SerializerBuilder().IgnoreFields().IncludeNonPublicProperties().Build();
-      dser = new DeserializerBuilder().IgnoreFields().IncludeNonPublicProperties().IgnoreUnmatchedProperties().Build();      
+      ser = new SerializerBuilder()
+        .WithNamingConvention(CamelCaseNamingConvention.Instance)
+        .IgnoreFields()                
+        .Build();
+      
+      dser = new DeserializerBuilder()
+        //.WithNamingConvention(CamelCaseNamingConvention.Instance)
+        .IgnoreFields()        
+        .IgnoreUnmatchedProperties()
+        .Build();
+                  
     }
 
     public IConfiguration Parse(string uri) {
@@ -22,8 +32,7 @@ namespace DAT.Configuration {
       IConfiguration config = dser.Deserialize<Configuration>(doc);
       
       if(config.Type == "Socket") {
-        config = dser.Deserialize<SocketConfiguration>(doc);
-        
+        config = dser.Deserialize<SocketConfiguration>(doc);        
       }
 
       config.Uri = uri;
