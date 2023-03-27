@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace DAT.Configuration {
   public class Configuration : IConfiguration {
     public string Type { get; set; }
-    public string Uri { get; set; }
+    public string Url { get; set; }
     public bool MonitorConfiguration { get; set; }
     public int MonitorIntervalMilliseconds { get; set; }
 

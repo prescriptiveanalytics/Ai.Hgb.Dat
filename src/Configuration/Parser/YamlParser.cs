@@ -35,14 +35,14 @@ namespace DAT.Configuration {
         config = dser.Deserialize<SocketConfiguration>(doc);        
       }
 
-      config.Uri = uri;
+      config.Url = uri;
       return config;
     }
 
     public T Parse<T>(string uri) where T : IConfiguration {
       string doc = Parser.ReadText(uri);
       var config = dser.Deserialize<T>(doc);
-      config.Uri = uri;
+      config.Url = uri;
 
       return config;
     }

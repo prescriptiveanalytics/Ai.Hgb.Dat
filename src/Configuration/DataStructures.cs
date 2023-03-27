@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YamlDotNet.Serialization;
 
 namespace DAT.Configuration {
   public class HostAddress {
@@ -13,6 +14,7 @@ namespace DAT.Configuration {
       Port = port;
     }
 
+    [YamlMember(Alias = "HostName")]
     public string Name { get; set; }
     public int Port { get; set; }
 

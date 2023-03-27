@@ -6,8 +6,8 @@ MonitorIntervalMilliseconds: 1000
 
 # socket specific configuration:
 
-Id: s1
-Name: PubSubReqSocket
+Id: c1
+Name: ConsumerSocketNew
 
 SocketType: MQTT
 
@@ -18,17 +18,7 @@ Broker:
 BaseTopic: demo
 PayloadType: json
 
-DefaultPublicationOptions:
-  Topic: docs
-  ResponseTopic: responses
-  QosLevel: ExactlyOnce
-
 DefaultSubscriptionOptions:
   Topic: docs
   QosLevel: ExactlyOnce
   ContentTypeFullName: DAT.DemoApp.Document
-
-DefaultRequestOptions:
-  Topic: docs
-  ResponseTopic: responses
-  GenerateResponseTopicPostfix: true

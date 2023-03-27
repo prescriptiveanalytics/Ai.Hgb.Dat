@@ -2,7 +2,7 @@
 
 namespace DAT.Configuration {
   public interface IConfiguration {
-    string Uri { get; set; }
+    string Url { get; set; }
 
     string Type { get; set; }
 

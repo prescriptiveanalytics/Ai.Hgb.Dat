@@ -4,10 +4,15 @@ using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
 using MQTTnet.Protocol;
+using System;
 using System.Net.Mime;
 
 namespace DAT.Communication {
   public class MqttSocket : ISocket {
+
+    public SocketConfiguration Configuration {      
+      get => configuration;
+    }
 
     public string Id {
       get => id;
@@ -79,6 +84,38 @@ namespace DAT.Communication {
     public MqttSocket(SocketConfiguration configuration) {
       this.configuration = configuration;
       this.configuration.ConfigurationChanged += Configuration_ConfigurationChanged; // react to config changes
+
+      id = configuration.Id;
+      name = configuration.Name;
+      address = configuration.Broker;
+
+      if (configuration.PayloadType == "json") converter = new JsonPayloadConverter();
+      else if (configuration.PayloadType == "yaml") converter = new YamlPayloadConverter();
+
+      defaultSubscriptionOptions = configuration.DefaultSubscriptionOptions;
+      defaultPublicationOptions = configuration.DefaultPublicationOptions;
+      defaultRequestOptions= configuration.DefaultRequestOptions;
+      //this.blockingActionExecution = blockingActionExecution;
+
+      cts = new CancellationTokenSource();
+      connected = new AutoResetEvent(false);
+      disconnected = new AutoResetEvent(false);
+      client = new MqttFactory().CreateManagedMqttClient();
+
+      subscriptions = new HashSet<SubscriptionOptions>();
+      pendingSubscriptions = new HashSet<SubscriptionOptions>();
+      actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
+      promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
+
+      if (defaultSubscriptionOptions != null) pendingSubscriptions.Add(defaultSubscriptionOptions);
+
+      client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
+      client.ConnectedAsync += Client_ConnectedAsync;
+      client.DisconnectedAsync += Client_DisconnectedAsync;
+      client.ConnectingFailedAsync += Client_ConnectingFailedAsync;
+
+      //if (connect) Connect();
+
     }
 
     private void Configuration_ConfigurationChanged(object sender, EventArgs<IConfiguration> e) {

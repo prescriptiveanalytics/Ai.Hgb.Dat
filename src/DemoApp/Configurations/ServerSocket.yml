@@ -7,7 +7,7 @@ MonitorIntervalMilliseconds: 1000
 # socket specific configuration:
 
 Id: s1
-Name: PubSubReqSocket
+Name: ServerSocket
 
 SocketType: MQTT
 

@@ -1,6 +1,7 @@
 ﻿using DAT.Communication;
 using DAT.Configuration;
 using System.Diagnostics;
+using System.Net;
 
 namespace DAT.DemoApp {
 
@@ -16,15 +17,93 @@ namespace DAT.DemoApp {
       //RunDemo_Mqtt_DocProducerConsumer();
       //RunDemo_Mqtt_DocRequestResponse();
       //RunDemo_ApacheKafka_ProducerConsumer();
-      RunDemo_ReadSocketConfiguration();
+      //RunDemo_ReadConfigurations();
+      RunDemo_ConfigurationMonitorBasedProducerConsumer();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
     }
 
-    public static void RunDemo_ReadSocketConfiguration() {
-      var config = Parser.Parse(@"..\..\..\Configurations\SocketConfig.yml");
+    public static void RunDemo_ConfigurationMonitorBasedProducerConsumer() {
+      var cts = new CancellationTokenSource();
+      int jobsPerProducer = 100;
+      ce = new CountdownEvent(jobsPerProducer);
+
+      var pMonitor = new DAT.Configuration.Monitor<SocketConfiguration>();
+      var cMonitor = new DAT.Configuration.Monitor<SocketConfiguration>();
+      pMonitor.Initialize(@"..\..\..\Configurations\ProducerConfig.yml");
+      cMonitor.Initialize(@"..\..\..\Configurations\ConsumerConfig.yml");
+
+      pMonitor.Start();
+      cMonitor.Start();
+
+      
+   
+
+      // setup
+      ISocket producerOne = new MqttSocket(pMonitor.Configuration);
+      ISocket consumerOne = new MqttSocket(cMonitor.Configuration);
+
+      // startuprf
+      IBroker broker = new MqttBroker(pMonitor.Configuration.Broker);
+      broker.StartUp();
+      producerOne.Connect();
+      consumerOne.Connect();
+
+      // main work
+      consumerOne.Subscribe<Document>(ProcessDocument, cts.Token);
+      Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
+
+      // wait for completion
+      Console.WriteLine("Waiting for completion...");
+      ce.Wait();
+
+
+      // tear down
+      producerOne.Disconnect();
+      consumerOne.Disconnect();
+      broker.TearDown();
+      pMonitor.Stop();
+      cMonitor.Stop();
+    }
+
+    public static void RunDemo_ConfigurationBasedProducerConsumer() {            
+      var cts = new CancellationTokenSource();
+      int jobsPerProducer = 10;
+      ce = new CountdownEvent(jobsPerProducer);      
+
+
+      // setup
+      SocketConfiguration pConfig = Parser.Parse<SocketConfiguration>(@"..\..\..\Configurations\ProducerConfig.yml");
+      SocketConfiguration cConfig = Parser.Parse<SocketConfiguration>(@"..\..\..\Configurations\ConsumerConfig.yml");
+      ISocket producerOne = new MqttSocket(pConfig);
+      ISocket consumerOne = new MqttSocket(cConfig);
+
+      // startup
+      IBroker broker = new MqttBroker(pConfig.Broker);
+      broker.StartUp();
+      producerOne.Connect();
+      consumerOne.Connect();
+
+      // main work
+      consumerOne.Subscribe<Document>(ProcessDocument, cts.Token);
+      Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
+
+      // wait for completion
+      Console.WriteLine("Waiting for completion...");
+      ce.Wait();
+
+
+      // tear down
+      producerOne.Disconnect();      
+      consumerOne.Disconnect();      
+      broker.TearDown();
+    }
+
+    public static void RunDemo_ReadConfigurations() {
+      IConfiguration config = Parser.Parse(@"..\..\..\Configurations\SocketConfig.yml");
+      SocketConfiguration sConfig = Parser.Parse<SocketConfiguration>(@"..\..\..\Configurations\SocketConfig.yml");
     }
 
     public static void RunDemo_ApacheKafka_ProducerConsumer() {
@@ -149,7 +228,7 @@ namespace DAT.DemoApp {
       Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
       Task.Factory.StartNew(() => ProduceDocuments(producerTwo, jobsPerProducer));
 
-      // wait: please note, true 
+      // wait for completion
       Console.WriteLine("Waiting for completion...");
       ce.Wait();
       

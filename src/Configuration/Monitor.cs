@@ -8,22 +8,25 @@ using System.Threading.Tasks;
 using YamlDotNet.Core;
 
 namespace DAT.Configuration {
-  public class Monitor : BackgroundService {
-    public IConfiguration Configuration { get { return configuration; } set { if (configuration != value) configuration = value; } }
+  public class Monitor<T> : BackgroundService where T : IConfiguration {
+    public T Configuration { get { return configuration; } set { configuration = value; } }
     public IParser Parser { get { return parser; } private set { parser = value; } }
     public int MonitorIntervalMilliseconds { get { return monitorIntervalMilliseconds; } set { if (monitorIntervalMilliseconds != value) monitorIntervalMilliseconds = value; } }
 
-    private IConfiguration configuration;
+    private T configuration;
     private IParser parser;
     private int monitorIntervalMilliseconds;
     private CancellationTokenSource cts;
+
+    public Monitor() { }
 
     public Monitor(IParser parser) {
       this.parser = parser;
     }
 
-    public void Initialize<T>(string uri) where T : IConfiguration {
-      configuration = Parser.Parse<T>(uri);
+    public void Initialize(string uri) {
+      parser = DAT.Configuration.Parser.GetParser(uri);      
+      configuration = parser.Parse<T>(uri);
       monitorIntervalMilliseconds = Configuration.MonitorIntervalMilliseconds;
       cts = new CancellationTokenSource();
     }
@@ -34,15 +37,15 @@ namespace DAT.Configuration {
       }
 
 
-      var file = new FileInfo(Configuration.Uri);
+      var file = new FileInfo(Configuration.Url);
       var lastUpdate = file.LastWriteTime;
       var stop = false;
 
       while(!token.IsCancellationRequested && !stop) {
-        if(File.Exists(configuration.Uri)) {
-          file = new FileInfo(configuration.Uri);
+        if(File.Exists(configuration.Url)) {
+          file = new FileInfo(configuration.Url);
           if(file.LastWriteTime > lastUpdate) {
-            var newConfiguration = parser.Parse(configuration.Uri);
+            var newConfiguration = parser.Parse(configuration.Url);
             configuration.ChangeConfiguration(newConfiguration);
           }
         } else {
