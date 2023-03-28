@@ -1,42 +1,21 @@
 ﻿using Confluent.Kafka;
 using DAT.Configuration;
 using DAT.Utils;
+using Microsoft.Extensions.Configuration;
+using MQTTnet;
 using System.Net;
+using System.Net.Sockets;
 using System.Xml.Linq;
 
 namespace DAT.Communication {
   public class ApachekafkaSocket : ISocket {
 
-    public string Id {
-      get => id;
-      set => id = value;
-    }
-
-    public string Name {
-      get => name;
-      set => name = value;
-    }
-    public HostAddress Address {
-      get { return address; }
+    public SocketConfiguration Configuration {
+      get => configuration;
     }
 
     public IEnumerable<SubscriptionOptions> Subscriptions {
       get => subscriptions;
-    }
-
-    public SubscriptionOptions DefaultSubscriptionOptions {
-      get => defaultSubscriptionOptions;
-      set => defaultSubscriptionOptions = value;
-    }
-
-    public PublicationOptions DefaultPublicationOptions {
-      get => defaultPublicationOptions;
-      set => defaultPublicationOptions = value;
-    }
-
-    public RequestOptions DefaultRequestOptions {
-      get => defaultRequestOptions;
-      set => defaultRequestOptions = value;
     }
 
     public IPayloadConverter Converter {
@@ -53,9 +32,8 @@ namespace DAT.Communication {
 
     public event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
 
-    private string id;
-    private string name;
-    private HostAddress address;
+    private SocketConfiguration configuration;
+
     private IPayloadConverter converter;
     private IProducer<Null, byte[]> producer;
     private IConsumer<Null, byte[]> consumer;
@@ -64,22 +42,68 @@ namespace DAT.Communication {
     private Task producerTask;
     private Task consumerTask;
     private CancellationTokenSource cts;
+    private AutoResetEvent connected;
+    private AutoResetEvent disconnected;
+    private object locker;
 
     private HashSet<SubscriptionOptions> subscriptions;
     private HashSet<SubscriptionOptions> pendingSubscriptions;
-    private SubscriptionOptions defaultSubscriptionOptions;
-    private PublicationOptions defaultPublicationOptions;
-    private RequestOptions defaultRequestOptions;
     private bool blockingActionExecution;
 
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
 
 
+    public ApachekafkaSocket(SocketConfiguration configuration) {
+      this.configuration = configuration;
+      this.configuration.ConfigurationChanged += Configuration_ConfigurationChanged; // react to config changes
+
+      if (configuration.PayloadType == "json") converter = new JsonPayloadConverter();
+      else if (configuration.PayloadType == "yaml") converter = new YamlPayloadConverter();
+
+
+      //this.blockingActionExecution = blockingActionExecution;
+
+      pConfig = new ProducerConfig
+      {
+        BootstrapServers = configuration.Broker.ToString(),
+        ClientId = Dns.GetHostName() + "_" + Misc.GenerateId(10),
+        //ClientId = id,
+        //ApiVersionRequest = false
+      };
+      cConfig = new ConsumerConfig
+      {
+        BootstrapServers = configuration.Broker.ToString(),
+        GroupId = "bar" + "_" + Misc.GenerateId(10),
+        ClientId = Dns.GetHostName() + "_" + Misc.GenerateId(10),
+        AutoOffsetReset = AutoOffsetReset.Earliest,
+        AllowAutoCreateTopics = true,
+        //, SecurityProtocol = SecurityProtocol.Plaintext
+      };
+      cConfig.EnableAutoCommit = false;
+
+      locker = new object();
+      cts = new CancellationTokenSource();
+      connected = new AutoResetEvent(false);
+      disconnected = new AutoResetEvent(false);      
+
+      subscriptions = new HashSet<SubscriptionOptions>();
+      pendingSubscriptions = new HashSet<SubscriptionOptions>();
+      actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
+      promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
+
+      if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(configuration.DefaultSubscriptionOptions);
+
+      //if (connect) Connect();
+    }
+
     public ApachekafkaSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false, bool connect = true) {
-      this.id = id;
-      this.name = name;
-      this.address = address;
+
+      configuration = new SocketConfiguration();
+      configuration.Id = id;
+      configuration.Name = name;
+      configuration.Broker = address;
+
       this.converter = converter;
 
       cts = new CancellationTokenSource();
@@ -107,15 +131,28 @@ namespace DAT.Communication {
       actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
       promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
 
-      this.defaultSubscriptionOptions = defSubOptions;
-      this.defaultPublicationOptions = defPubOptions;
-      this.defaultRequestOptions = defReqOptions;
+      configuration.DefaultSubscriptionOptions = defSubOptions;
+      configuration.DefaultPublicationOptions = defPubOptions;
+      configuration.DefaultRequestOptions = defReqOptions;
       this.blockingActionExecution = blockingActionExecution;
 
-      if (defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
+      if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(defSubOptions);
             
 
       if (connect) Connect();
+    }
+
+    public object Clone() {
+      return new ApachekafkaSocket((SocketConfiguration)configuration.Clone());
+    }
+
+    private void Configuration_ConfigurationChanged(object sender, EventArgs<Configuration.IConfiguration> e) {
+      Console.WriteLine("Udating socket now...");
+      var newConfiguration = e.Value as SocketConfiguration;
+
+      // TODO
+
+      configuration = newConfiguration;
     }
 
     private void ReceiveMessages(CancellationToken token) {
@@ -203,12 +240,7 @@ namespace DAT.Communication {
       consumer.Close();
     }
 
-    public object Clone() {
-      return new ApachekafkaSocket(Id, Name, Address, Converter,
-        (SubscriptionOptions)DefaultSubscriptionOptions.Clone(),
-        (PublicationOptions)DefaultPublicationOptions.Clone(),
-        (RequestOptions)DefaultRequestOptions.Clone());
-    }
+
 
     private void OnMessageReceived_BeforeRegisteredHandlers(IMessage message) {
       var handler = MessageReceived_BeforeRegisteredHandlers;
@@ -227,8 +259,8 @@ namespace DAT.Communication {
       consumer = new ConsumerBuilder<Null, byte[]>(cConfig).Build();
       consumerTask = Task.Factory.StartNew(() => ReceiveMessages(cts.Token), cts.Token);
 
-      if (defaultSubscriptionOptions != null && defaultSubscriptionOptions.Topic != null)
-        consumer.Subscribe(defaultSubscriptionOptions.Topic);        
+      if (configuration.DefaultSubscriptionOptions != null && configuration.DefaultSubscriptionOptions.Topic != null)
+        consumer.Subscribe(configuration.DefaultSubscriptionOptions.Topic);        
 
       foreach (var subscription in pendingSubscriptions) {
         consumer.Subscribe(subscription.Topic);        
@@ -264,10 +296,10 @@ namespace DAT.Communication {
     }
 
     public async Task PublishAsync<T>(T payload, PublicationOptions options = null) {
-      var o = options != null ? options : DefaultPublicationOptions;
+      var o = options != null ? options : configuration.DefaultPublicationOptions;
 
       // setup message      
-      var msg = new Message<T>(Id, Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
+      var msg = new Message<T>(configuration.Id, configuration.Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
       var kafkaMsg = new Message<Null, byte[]> { Value = converter.Serialize(msg) };
 
       var t = producer.ProduceAsync(msg.Topic, kafkaMsg, cts.Token);      
@@ -291,7 +323,7 @@ namespace DAT.Communication {
     }
 
     public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {
-      var o = options != null ? options : DefaultRequestOptions;
+      var o = options != null ? options : configuration.DefaultRequestOptions;
       var rt = o.GenerateResponseTopicPostfix
         ? string.Concat(o.ResponseTopic, "/", Misc.GenerateId(10))
         : o.ResponseTopic;
@@ -304,7 +336,7 @@ namespace DAT.Communication {
 
       // setup message      
       string contentType = payload != null ? typeof(T2).FullName : "";
-      var msg = new Message<T2>(Id, Name, o.Topic, o.ResponseTopic, contentType, payload);
+      var msg = new Message<T2>(configuration.Id, configuration.Name, o.Topic, o.ResponseTopic, contentType, payload);
       var kafkaMsg = new Message<Null, byte[]> { Value = converter.Serialize(msg) };
 
       // send request message
@@ -334,7 +366,7 @@ namespace DAT.Communication {
     }
 
     public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      var o = options != null ? options : DefaultSubscriptionOptions;
+      var o = options != null ? options : configuration.DefaultSubscriptionOptions;
 
       if (!actions.ContainsKey(o)) {
         lock (actions) {
@@ -348,7 +380,7 @@ namespace DAT.Communication {
     }
 
     public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      var o = options != null ? options : DefaultSubscriptionOptions; // use new or default options as base
+      var o = options != null ? options : configuration.DefaultSubscriptionOptions; // use new or default options as base
       if (o.ContentType != typeof(T)) { // create new options if requested type does not match the base
         o = (SubscriptionOptions)o.Clone();
         o.ContentType = typeof(T);

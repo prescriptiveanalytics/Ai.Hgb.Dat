@@ -1,7 +1,7 @@
 ﻿using DAT.Utils;
 
 namespace DAT.Configuration {
-  public interface IConfiguration {
+  public interface IConfiguration : ICloneable {
     string Url { get; set; }
 
     string Type { get; set; }

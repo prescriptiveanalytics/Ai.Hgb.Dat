@@ -36,6 +36,26 @@ namespace DAT.Configuration {
 
     public SocketConfiguration() { }
 
+    public object Clone() {
+      var c = new SocketConfiguration();
+
+      c.Type = Type;
+      c.Url= Url;
+      c.MonitorConfiguration = MonitorConfiguration;
+      c.MonitorIntervalMilliseconds= MonitorIntervalMilliseconds;
+      c.Name= Name;
+      c.Id= Id;
+      c.SocketType= SocketType;
+      c.Broker= Broker;
+      c.BaseTopic= BaseTopic;
+      c.PayloadType= PayloadType;
+      c.DefaultPublicationOptions = (PublicationOptions)DefaultPublicationOptions.Clone();
+      c.DefaultSubscriptionOptions= (SubscriptionOptions)DefaultSubscriptionOptions.Clone();
+      c.DefaultRequestOptions= (RequestOptions)DefaultRequestOptions.Clone();
+
+      return c;
+    }
+
     public void ChangeConfiguration(IConfiguration newConfiguration) {
       if (!(newConfiguration is SocketConfiguration)) throw new ArgumentException("The given argument is not of the type SocketConfiguration.");
       var c = newConfiguration as SocketConfiguration;

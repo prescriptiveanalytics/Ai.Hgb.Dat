@@ -4,21 +4,13 @@ using DAT.Utils;
 namespace DAT.Communication {
   public interface ISocket : ICloneable {
 
-    string Id { get; set; }
-    string Name { get; set; }
-    HostAddress Address { get; }
+    SocketConfiguration Configuration { get; }
 
     IEnumerable<SubscriptionOptions> Subscriptions { get; }
 
     event EventHandler<EventArgs<IMessage>> MessageReceived_BeforeRegisteredHandlers;
 
     event EventHandler<EventArgs<IMessage>> MessageReceived_AfterRegisteredHandlers;
-
-    SubscriptionOptions DefaultSubscriptionOptions { get; set; }
-
-    PublicationOptions DefaultPublicationOptions { get; set; }
-
-    RequestOptions DefaultRequestOptions { get; set; }
 
     IPayloadConverter Converter { get; set; }
 

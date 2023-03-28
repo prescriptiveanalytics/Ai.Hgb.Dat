@@ -17,5 +17,9 @@ namespace DAT.Configuration {
     public void ChangeConfiguration(IConfiguration newConfiguration) {
       throw new NotImplementedException();
     }
+
+    public object Clone() {
+      throw new NotImplementedException();
+    }
   }
 }

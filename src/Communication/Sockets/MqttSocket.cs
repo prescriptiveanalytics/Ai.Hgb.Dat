@@ -14,36 +14,8 @@ namespace DAT.Communication {
       get => configuration;
     }
 
-    public string Id {
-      get => id;
-      set => id = value;
-    }
-
-    public string Name {
-      get => name;
-      set => name = value;
-    }
-    public HostAddress Address {
-      get { return address; }
-    }
-
     public IEnumerable<SubscriptionOptions> Subscriptions {
       get => subscriptions;
-    }
-
-    public SubscriptionOptions DefaultSubscriptionOptions {
-      get => defaultSubscriptionOptions;
-      set => defaultSubscriptionOptions = value;
-    }
-
-    public PublicationOptions DefaultPublicationOptions {
-      get => defaultPublicationOptions;
-      set => defaultPublicationOptions = value;
-    }
-
-    public RequestOptions DefaultRequestOptions {
-      get => defaultRequestOptions;
-      set => defaultRequestOptions = value;
     }
 
     public IPayloadConverter Converter {
@@ -62,20 +34,15 @@ namespace DAT.Communication {
 
     private SocketConfiguration configuration;
 
-    private string id;
-    private string name;
-    private HostAddress address;
     private IPayloadConverter converter;
     private IManagedMqttClient client;
     private CancellationTokenSource cts;
     private AutoResetEvent connected;
     private AutoResetEvent disconnected;
+    private object locker;
 
     private HashSet<SubscriptionOptions> subscriptions;
     private HashSet<SubscriptionOptions> pendingSubscriptions;
-    private SubscriptionOptions defaultSubscriptionOptions;
-    private PublicationOptions defaultPublicationOptions;
-    private RequestOptions defaultRequestOptions;
     private bool blockingActionExecution;
 
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
@@ -85,18 +52,13 @@ namespace DAT.Communication {
       this.configuration = configuration;
       this.configuration.ConfigurationChanged += Configuration_ConfigurationChanged; // react to config changes
 
-      id = configuration.Id;
-      name = configuration.Name;
-      address = configuration.Broker;
-
       if (configuration.PayloadType == "json") converter = new JsonPayloadConverter();
       else if (configuration.PayloadType == "yaml") converter = new YamlPayloadConverter();
 
-      defaultSubscriptionOptions = configuration.DefaultSubscriptionOptions;
-      defaultPublicationOptions = configuration.DefaultPublicationOptions;
-      defaultRequestOptions= configuration.DefaultRequestOptions;
+
       //this.blockingActionExecution = blockingActionExecution;
 
+      locker = new object();
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
       disconnected = new AutoResetEvent(false);
@@ -107,7 +69,7 @@ namespace DAT.Communication {
       actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
       promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
 
-      if (defaultSubscriptionOptions != null) pendingSubscriptions.Add(defaultSubscriptionOptions);
+      if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(configuration.DefaultSubscriptionOptions);
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
       client.ConnectedAsync += Client_ConnectedAsync;
@@ -118,17 +80,17 @@ namespace DAT.Communication {
 
     }
 
-    private void Configuration_ConfigurationChanged(object sender, EventArgs<IConfiguration> e) {
-      // TODO: react to changes of pub/sub/req options
-      Console.WriteLine("Udating socket now...");
-    }
+
 
     public MqttSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false, bool connect = true) {
-      this.id = id;
-      this.name = name;
-      this.address = address;
-      this.converter = converter;      
+      configuration = new SocketConfiguration();
+      configuration.Id = id;
+      configuration.Name = name;
+      configuration.Broker = address;
 
+      this.converter = converter;
+
+      locker = new object();
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
       disconnected = new AutoResetEvent(false);
@@ -139,12 +101,12 @@ namespace DAT.Communication {
       actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
       promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
 
-      this.defaultSubscriptionOptions = defSubOptions;
-      this.defaultPublicationOptions = defPubOptions;
-      this.defaultRequestOptions = defReqOptions;
+      configuration.DefaultSubscriptionOptions = defSubOptions;
+      configuration.DefaultPublicationOptions = defPubOptions;
+      configuration.DefaultRequestOptions = defReqOptions;
       this.blockingActionExecution = blockingActionExecution;
 
-      if (defSubOptions != null) pendingSubscriptions.Add(defSubOptions);
+      if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(defSubOptions);
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
       client.ConnectedAsync += Client_ConnectedAsync;
@@ -155,11 +117,20 @@ namespace DAT.Communication {
     }
 
     public object Clone() {
-      return new MqttSocket(Id, Name, Address, Converter,
-        (SubscriptionOptions)DefaultSubscriptionOptions?.Clone(),
-        (PublicationOptions)DefaultPublicationOptions?.Clone(),
-        (RequestOptions)DefaultRequestOptions?.Clone(),
+      return new MqttSocket(Configuration.Id, Configuration.Name, Configuration.Broker, Converter,
+        (SubscriptionOptions)Configuration.DefaultSubscriptionOptions?.Clone(),
+        (PublicationOptions)Configuration.DefaultPublicationOptions?.Clone(),
+        (RequestOptions)Configuration.DefaultRequestOptions?.Clone(),
         BlockingActionExecution);
+    }
+
+    private void Configuration_ConfigurationChanged(object sender, EventArgs<IConfiguration> e) {      
+      Console.WriteLine("Udating socket now...");
+      var newConfiguration = e.Value as SocketConfiguration;
+
+      // TODO
+
+      configuration = newConfiguration;
     }
 
     private Task Client_ConnectedAsync(MqttClientConnectedEventArgs arg) {      
@@ -261,8 +232,8 @@ namespace DAT.Communication {
       if (IsConnected()) return true;
 
       var options = new MqttClientOptionsBuilder()
-        .WithClientId(Name)
-        .WithTcpServer(address.Name, address.Port);
+        .WithClientId(Configuration.Name)
+        .WithTcpServer(configuration.Broker.Name, configuration.Broker.Port);
       var mgOptions = new ManagedMqttClientOptionsBuilder()
         .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
         .WithClientOptions(options.Build())
@@ -271,8 +242,8 @@ namespace DAT.Communication {
       client.StartAsync(mgOptions).Wait(cts.Token);
       connected.WaitOne();
 
-      if (defaultSubscriptionOptions != null && defaultSubscriptionOptions.Topic != null)
-        client.SubscribeAsync(defaultSubscriptionOptions.Topic, GetQosLevel(defaultSubscriptionOptions.QosLevel)).Wait(cts.Token);
+      if (configuration.DefaultSubscriptionOptions != null && configuration.DefaultSubscriptionOptions.Topic != null)
+        client.SubscribeAsync(configuration.DefaultSubscriptionOptions.Topic, GetQosLevel(configuration.DefaultSubscriptionOptions.QosLevel)).Wait(cts.Token);
 
       foreach (var subscription in pendingSubscriptions) {
         client.SubscribeAsync(subscription.Topic, GetQosLevel(subscription.QosLevel)).Wait(cts.Token);
@@ -304,7 +275,7 @@ namespace DAT.Communication {
     }
 
     public void Subscribe(SubscriptionOptions options) {
-      var o = options != null ? options : DefaultSubscriptionOptions;
+      var o = options != null ? options : configuration.DefaultSubscriptionOptions;
 
       if (IsConnected()) {
         subscriptions.Add(o);
@@ -316,7 +287,7 @@ namespace DAT.Communication {
     }
 
     public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      var o = options != null ? options : DefaultSubscriptionOptions;
+      var o = options != null ? options : configuration.DefaultSubscriptionOptions;
 
       if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
       CancellationToken tok = token.HasValue ? token.Value : cts.Token;
@@ -326,7 +297,7 @@ namespace DAT.Communication {
     }
 
     public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
-      var o = options != null ? options : DefaultSubscriptionOptions; // use new or default options as base
+      var o = options != null ? options : configuration.DefaultSubscriptionOptions; // use new or default options as base
       if (o.ContentType != typeof(T)) { // create new options if requested type does not match the base
         o = (SubscriptionOptions)o.Clone();
         o.ContentType = typeof(T);
@@ -356,10 +327,10 @@ namespace DAT.Communication {
     }
 
     public async Task PublishAsync<T>(T payload, PublicationOptions options = null) {
-      var o = options != null ? options : DefaultPublicationOptions;
+      var o = options != null ? options : configuration.DefaultPublicationOptions;
 
       // setup message      
-      var msg = new Message<T>(Id, Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
+      var msg = new Message<T>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
 
       var appMessage = new MqttApplicationMessageBuilder()
         .WithTopic(msg.Topic)
@@ -393,7 +364,7 @@ namespace DAT.Communication {
 
     public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {
       // parse options
-      var o = options != null ? options : (RequestOptions)DefaultRequestOptions.Clone();
+      var o = options != null ? options : (RequestOptions)configuration.DefaultRequestOptions.Clone();
       var rt = o.GenerateResponseTopicPostfix
         ? string.Concat(o.ResponseTopic, "/", Misc.GenerateId(10))
         : o.ResponseTopic;
@@ -409,12 +380,12 @@ namespace DAT.Communication {
       var appMessageBuilder = new MqttApplicationMessageBuilder()
         .WithTopic(o.Topic)
         .WithResponseTopic(o.ResponseTopic)
-        .WithUserProperty(Name, Name)
+        .WithUserProperty(Configuration.Name, Configuration.Name)
         .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce);
 
       // setup message
       string contentType = payload != null ? typeof(T2).FullName : "";
-      IMessage msg = new Message<T2>(Id, Name, o.Topic, o.ResponseTopic, contentType, payload);
+      IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, payload);
 
       appMessageBuilder = msg != null
         ? appMessageBuilder.WithPayload(converter.Serialize(msg))

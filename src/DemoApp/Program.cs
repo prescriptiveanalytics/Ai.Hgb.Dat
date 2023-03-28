@@ -27,7 +27,7 @@ namespace DAT.DemoApp {
 
     public static void RunDemo_ConfigurationMonitorBasedProducerConsumer() {
       var cts = new CancellationTokenSource();
-      int jobsPerProducer = 100;
+      int jobsPerProducer = 10;
       ce = new CountdownEvent(jobsPerProducer);
 
       var pMonitor = new DAT.Configuration.Monitor<SocketConfiguration>();
@@ -245,18 +245,18 @@ namespace DAT.DemoApp {
       
       for(int i = 0; i < jobCount; i++) {
         var doc = socket.Request<Document>();
-        Console.WriteLine($"Client {socket.Name} rocessing doc: {doc}");        
+        Console.WriteLine($"Client {socket.Configuration.Name} rocessing doc: {doc}");        
       }
     }
 
     private static void ServeDocuments(ISocket socket, CancellationToken token) {
       var rnd = new Random();
-      var o = socket.DefaultRequestOptions;
+      var o = socket.Configuration.DefaultRequestOptions;
       var count = 0;
       
       socket.Subscribe((IMessage docReq, CancellationToken token) => {
         count = Interlocked.Increment(ref count);
-        var doc = new Document(socket.Id + "-" + count, "server", "lorem ipsum dolor");
+        var doc = new Document(socket.Configuration.Id + "-" + count, "server", "lorem ipsum dolor");
         Task.Delay(500 + rnd.Next(1000)).Wait();
         Console.WriteLine($"Produced doc: {doc}");
         var pOpt = new PublicationOptions(docReq.ResponseTopic, "", QualityOfServiceLevel.ExactlyOnce);
@@ -269,7 +269,7 @@ namespace DAT.DemoApp {
       var t = Task.Factory.StartNew(() =>
       {
         for (int i = 0; i < jobCount; i++) {
-          var doc = new Document(socket.Id + "-" + (i+1), socket.Name, "lorem ipsum dolor");
+          var doc = new Document(socket.Configuration.Id + "-" + (i+1), socket.Configuration.Name, "lorem ipsum dolor");
           Task.Delay(500 + rnd.Next(1000)).Wait();
           Console.WriteLine($"Produced doc: {doc}");
           socket.Publish(doc);
