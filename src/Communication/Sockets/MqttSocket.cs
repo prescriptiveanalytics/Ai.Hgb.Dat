@@ -228,8 +228,8 @@ namespace DAT.Communication {
       if (handler != null) handler(this, new EventArgs<IMessage>(message));
     }
 
-    public bool Connect() {
-      if (IsConnected()) return true;
+    public ISocket Connect() {
+      if (IsConnected()) return this;
 
       var options = new MqttClientOptionsBuilder()
         .WithClientId(Configuration.Name)
@@ -250,17 +250,17 @@ namespace DAT.Communication {
       }
       pendingSubscriptions.Clear();
 
-      return client.IsConnected;
+      return this;
     }
 
-    public bool Disconnect() {
+    public ISocket Disconnect() {
       client.StopAsync().Wait(cts.Token);
       cts.Cancel();      
       disconnected.WaitOne();
       client.Dispose();
       client = null;
 
-      return IsConnected();
+      return this;
     }
 
     public void Abort() {
@@ -268,6 +268,10 @@ namespace DAT.Communication {
       client.StopAsync();
       client.Dispose();
       client = null;
+    }
+
+    public void Dispose() {
+      Disconnect();
     }
 
     public bool IsConnected() {

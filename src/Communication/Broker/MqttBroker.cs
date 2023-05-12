@@ -17,9 +17,17 @@ namespace DAT.Communication {
       this.address = address;
     }
 
-    public void StartUp() {
+    public void Dispose() {
+      TearDown();
+      server.Dispose();
+      server = null;
+      address = null;
+    }
+
+    public IBroker StartUp() {
       var t = StartUpAsync();
       t.Wait();
+      return this;
     }
 
     public Task StartUpAsync() {

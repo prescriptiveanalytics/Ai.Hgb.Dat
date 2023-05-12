@@ -2,7 +2,7 @@
 using DAT.Utils;
 
 namespace DAT.Communication {
-  public interface ISocket : ICloneable {
+  public interface ISocket : ICloneable, IDisposable {
 
     SocketConfiguration Configuration { get; }
 
@@ -16,9 +16,9 @@ namespace DAT.Communication {
 
     bool BlockingActionExecution { get; set; }
     
-    bool Connect();
+    ISocket Connect();
 
-    bool Disconnect();
+    ISocket Disconnect();
 
     void Abort();
 

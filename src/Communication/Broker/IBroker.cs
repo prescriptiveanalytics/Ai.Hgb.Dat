@@ -1,10 +1,10 @@
 ﻿using DAT.Configuration;
 
 namespace DAT.Communication {
-  public interface IBroker {
+  public interface IBroker : IDisposable {
     HostAddress Address { get; }
 
-    void StartUp();
+    IBroker StartUp();
     
     Task StartUpAsync();
 

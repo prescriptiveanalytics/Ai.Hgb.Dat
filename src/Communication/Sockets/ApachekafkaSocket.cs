@@ -252,8 +252,8 @@ namespace DAT.Communication {
       if (handler != null) handler(this, new EventArgs<IMessage>(message));
     }
 
-    public bool Connect() {
-      if(producer != null || consumer != null) return true;
+    public ISocket Connect() {
+      if(producer != null || consumer != null) return this;
 
       producer = new ProducerBuilder<Null, byte[]>(pConfig).Build();
       consumer = new ConsumerBuilder<Null, byte[]>(cConfig).Build();
@@ -267,22 +267,26 @@ namespace DAT.Communication {
       }
       pendingSubscriptions.Clear();
 
-      return true;
+      return this;
     }
 
-    public bool Disconnect() {
+    public ISocket Disconnect() {
       cts.Cancel();
 
       producer.Flush();
       producer.Dispose();            
       consumer.Dispose();
 
-      return true;
+      return this;
     }
 
     public void Abort() {
       producer.AbortTransaction();
       cts.Cancel();
+      Disconnect();
+    }
+
+    public void Dispose() {
       Disconnect();
     }
 

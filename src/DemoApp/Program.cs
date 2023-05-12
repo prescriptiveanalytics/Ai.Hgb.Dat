@@ -18,7 +18,8 @@ namespace DAT.DemoApp {
       //RunDemo_Mqtt_DocRequestResponse();
       //RunDemo_ApacheKafka_ProducerConsumer();
       //RunDemo_ReadConfigurations();
-      RunDemo_ConfigurationMonitorBasedProducerConsumer();
+      //RunDemo_ConfigurationMonitorBasedProducerConsumer();
+      RunDemo_DisposableBrokerSocket();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
@@ -99,6 +100,18 @@ namespace DAT.DemoApp {
       producerOne.Disconnect();      
       consumerOne.Disconnect();      
       broker.TearDown();
+    }
+
+    public static void RunDemo_DisposableBrokerSocket() {
+      var cts = new CancellationTokenSource();
+      int jobsPerProducer = 10;
+      SocketConfiguration pConfig = Parser.Parse<SocketConfiguration>(@"..\..\..\Configurations\ProducerConfig.yml");
+
+      using(var broker = new MqttBroker(pConfig.Broker).StartUp()) {
+        using (var producer = new MqttSocket(pConfig).Connect()) {
+          ProduceDocuments(producer, jobsPerProducer);
+        }
+      }
     }
 
     public static void RunDemo_ReadConfigurations() {
