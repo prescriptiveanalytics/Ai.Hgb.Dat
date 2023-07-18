@@ -93,7 +93,7 @@ namespace DAT.DemoApp {
 
       // wait for completion
       Console.WriteLine("Waiting for completion...");
-      ce.Wait();
+      ce.Wait();      
 
 
       // tear down
@@ -108,9 +108,9 @@ namespace DAT.DemoApp {
       SocketConfiguration pConfig = Parser.Parse<SocketConfiguration>(@"..\..\..\Configurations\ProducerConfig.yml");
 
       using(var broker = new MqttBroker(pConfig.Broker).StartUp()) {
-        using (var producer = new MqttSocket(pConfig).Connect()) {
+        using (var producer = new MqttSocket(pConfig).Connect()) 
           ProduceDocuments(producer, jobsPerProducer);
-        }
+        
       }
     }
 

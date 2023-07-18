@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>DAT.Communication</id>
+    <version>1.0.0</version>
+    <title></title>
+    <authors>Jan Zenisek</authors>
+    <owners>Jan Zenisek</owners>
+    <description>DAT.Communication</description>
+    <dependencies>
+      <group targetFramework="net6.0" />
+    </dependencies>
+  </metadata>
+   <files>
+     <file src=".\bin\Release\net6.0\DAT.*.dll" target=".\lib\net6.0" />
+  </files>
+</package>

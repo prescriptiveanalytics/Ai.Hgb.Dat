@@ -2,6 +2,14 @@
 using DAT.Utils;
 
 namespace DAT.Communication {
+  /// <summary>
+  /// This interface describes the base functionality all socket implementations must provide. 
+  /// </summary>
+  /// <remarks>
+  /// Implementations may be done with arbitrary messaging technologies, such as MQTT, Apache Kafak, etc.
+  /// To cover the interface functionality, respective publicly available clients for these technologies are utilized, wrapped and extended.
+  /// This C# interface is ported also to other programming languages in order to enable cross-language interoperability.
+  /// </remarks>
   public interface ISocket : ICloneable, IDisposable {
 
     SocketConfiguration Configuration { get; }
@@ -16,6 +24,10 @@ namespace DAT.Communication {
 
     bool BlockingActionExecution { get; set; }
     
+    /// <summary>
+    /// Connects an ISocket instance to a message broker.
+    /// </summary>
+    /// <returns>An ISocket typed instane (enabling builder pattern)</returns>
     ISocket Connect();
 
     ISocket Disconnect();
