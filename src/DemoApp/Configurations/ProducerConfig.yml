@@ -6,8 +6,8 @@ MonitorIntervalMilliseconds: 1000
 
 # socket specific configuration:
 
-Id: p1
-Name: ProducerSocket
+Id: producer
+Name: Producer
 
 SocketType: MQTT
 

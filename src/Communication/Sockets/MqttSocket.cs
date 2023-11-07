@@ -94,7 +94,7 @@ namespace DAT.Communication {
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
       disconnected = new AutoResetEvent(false);
-      client = new MqttFactory().CreateManagedMqttClient();
+      client = new MqttFactory().CreateManagedMqttClient();      
 
       subscriptions = new HashSet<SubscriptionOptions>();
       pendingSubscriptions = new HashSet<SubscriptionOptions>();
@@ -124,7 +124,7 @@ namespace DAT.Communication {
         BlockingActionExecution);
     }
 
-    private void Configuration_ConfigurationChanged(object sender, EventArgs<IConfiguration> e) {      
+    private void Configuration_ConfigurationChanged(object sender, EventArgs<DAT.Configuration.IConfiguration> e) {      
       Console.WriteLine("Udating socket now...");
       var newConfiguration = e.Value as SocketConfiguration;
 
@@ -150,7 +150,7 @@ namespace DAT.Communication {
 
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
       // parse received message
-      Message msg = converter.Deserialize<Message>(arg.ApplicationMessage.Payload);
+      Message msg = converter.Deserialize<Message>(arg.ApplicationMessage.PayloadSegment.Array);
       
 
       // fire message received event (before executing individually registered handlers)
@@ -233,13 +233,16 @@ namespace DAT.Communication {
 
       var options = new MqttClientOptionsBuilder()
         .WithClientId(Configuration.Name)
-        .WithTcpServer(configuration.Broker.Name, configuration.Broker.Port);
+        .WithWebSocketServer("ws://127.0.0.1:5000/mqtt")         
+        .WithTcpServer(configuration.Broker.Name, configuration.Broker.Port)
+        .WithCleanSession(true);
       var mgOptions = new ManagedMqttClientOptionsBuilder()
         .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
         .WithClientOptions(options.Build())
         .Build();
 
       client.StartAsync(mgOptions).Wait(cts.Token);
+      client.ConnectingFailedAsync += OnClient_ConnectingFailedAsync;
       connected.WaitOne();
 
       if (configuration.DefaultSubscriptionOptions != null && configuration.DefaultSubscriptionOptions.Topic != null)
@@ -251,6 +254,11 @@ namespace DAT.Communication {
       pendingSubscriptions.Clear();
 
       return this;
+    }
+
+    private Task OnClient_ConnectingFailedAsync(ConnectingFailedEventArgs arg) {
+      Console.WriteLine(arg.Exception.InnerException.ToString());
+      return Task.CompletedTask;
     }
 
     public ISocket Disconnect() {
@@ -283,7 +291,9 @@ namespace DAT.Communication {
 
       if (IsConnected()) {
         subscriptions.Add(o);
-        client.SubscribeAsync(o.Topic, GetQosLevel(o.QosLevel)).Wait(cts.Token);
+        //client.SubscribeAsync(o.Topic, GetQosLevel(o.QosLevel)).Wait(cts.Token);        
+        client.SubscribeAsync(o.Topic).Wait(cts.Token);
+        Task.Delay(1).Wait(); // ensure subscription (due to buggy client implementation of SubscribeAsync)
       }
       else {
         pendingSubscriptions.Add(o);
@@ -338,7 +348,7 @@ namespace DAT.Communication {
 
       var appMessage = new MqttApplicationMessageBuilder()
         .WithTopic(msg.Topic)
-        .WithResponseTopic(msg.ResponseTopic)
+        //.WithResponseTopic(msg.ResponseTopic)
         .WithPayload(converter.Serialize(msg))
         .WithQualityOfServiceLevel(GetQosLevel(o.QosLevel))
         .Build();
@@ -368,12 +378,11 @@ namespace DAT.Communication {
 
     public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {
       // parse options
-      var o = options != null ? options : (RequestOptions)configuration.DefaultRequestOptions.Clone();
+      var o = options != null ? (RequestOptions)options.Clone() : (RequestOptions)configuration.DefaultRequestOptions.Clone();
       var rt = o.GenerateResponseTopicPostfix
         ? string.Concat(o.ResponseTopic, "/", Misc.GenerateId(10))
-        : o.ResponseTopic;
+        : o.ResponseTopic;      
       o.ResponseTopic = rt;
-
 
       // configure promise
       var promise = new TaskCompletionSource<IMessage>();
@@ -383,9 +392,9 @@ namespace DAT.Communication {
       // build request message
       var appMessageBuilder = new MqttApplicationMessageBuilder()
         .WithTopic(o.Topic)
-        .WithResponseTopic(o.ResponseTopic)
-        .WithUserProperty(Configuration.Name, Configuration.Name)
         .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce);
+        //.WithResponseTopic(o.ResponseTopic)
+        //.WithUserProperty(Configuration.Name, Configuration.Name);
 
       // setup message
       string contentType = payload != null ? typeof(T2).FullName : "";
@@ -407,7 +416,7 @@ namespace DAT.Communication {
 
       // deregister promise handling
       Unsubscribe(o.ResponseTopic);
-      promises.Remove(o);
+      promises.Remove(o);      
 
       // deserialize and return response
       return converter.Deserialize<T1>(response.Payload);

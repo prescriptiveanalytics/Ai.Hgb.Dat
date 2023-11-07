@@ -1,5 +1,7 @@
 ﻿using DAT.Communication;
 using DAT.Configuration;
+using MQTTnet;
+using MQTTnet.Client;
 using System.Diagnostics;
 using System.Net;
 
@@ -14,16 +16,80 @@ namespace DAT.DemoApp {
       var sw = new Stopwatch();
       sw.Start();
 
-      //RunDemo_Mqtt_DocProducerConsumer();
+      //RunDemo_RabbitMQTest();
+      RunDemo_Mqtt_DocProducerConsumer();
       //RunDemo_Mqtt_DocRequestResponse();
       //RunDemo_ApacheKafka_ProducerConsumer();
       //RunDemo_ReadConfigurations();
       //RunDemo_ConfigurationMonitorBasedProducerConsumer();
-      RunDemo_DisposableBrokerSocket();
+      //RunDemo_DisposableBrokerSocket();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
+    }
+
+    public static void RunDemo_Websockets() {
+
+    }
+
+    public static void RunDemo_RabbitMQTest() {
+      converter = new JsonPayloadConverter();
+
+      //SocketConfiguration pConfig = Parser.Parse<SocketConfiguration>(@"..\..\..\Configurations\ProducerConfig.yml");
+      //ISocket producerOne = new MqttSocket(pConfig);
+      //producerOne.Connect();
+      //Task.Delay(1000).Wait();
+      //for (int i = 0; i < 10; i++) {
+      //  producerOne.Publish(new Document("doc" + i + 1, "jan", "foo bar"));
+      //  Console.WriteLine("published");
+      //  Task.Delay(2000).Wait();
+      //}
+      //Task.Delay(5000).Wait();
+      //producerOne.Disconnect();
+
+      var socket = new MqttFactory().CreateMqttClient();
+      var options = new MqttClientOptionsBuilder()
+        .WithClientId("lolo")
+        //.WithCredentials("guest", "guest")
+        //.WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
+        .WithTcpServer("127.0.0.1", 1883)
+        //.WithKeepAlivePeriod(TimeSpan.FromSeconds(10))
+        .WithCleanSession(true);
+
+      var t = socket.ConnectAsync(options.Build());
+      t.Wait();
+      Console.WriteLine(t.Result.AssignedClientIdentifier);
+
+      socket.SubscribeAsync("demo");
+      socket.ApplicationMessageReceivedAsync += Socket_ApplicationMessageReceivedAsync;
+      Task.Delay(1000).Wait();
+
+      for (int i = 0; i < 10; i++) {
+        var msg = "msg " + i + 1;
+        var appMessage = new MqttApplicationMessageBuilder()
+          .WithTopic("demo")
+          //.WithResponseTopic("demo")
+          .WithPayload(converter.Serialize(msg))
+          //.WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+          .Build();
+
+        try {
+          socket.PublishAsync(appMessage);
+        }
+        catch (Exception ex) {
+          Console.WriteLine(ex.Message.ToString());
+        }
+        Task.Delay(1000).Wait();
+      }
+      Task.Delay(10000).Wait();
+      socket.DisconnectAsync().Wait();
+    }
+
+    private static Task Socket_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
+      var msg = arg.ApplicationMessage;
+      Console.WriteLine("received: " + converter.Deserialize<string>(msg.Payload));
+      return Task.CompletedTask;
     }
 
     public static void RunDemo_ConfigurationMonitorBasedProducerConsumer() {
@@ -212,8 +278,9 @@ namespace DAT.DemoApp {
       HostAddress address = new HostAddress("127.0.0.1", 1883);
       converter = new JsonPayloadConverter();
 
-      IBroker broker = new MqttBroker(address);
-      broker.StartUp();
+      MqttBroker broker = new MqttBroker(address);
+      //broker.StartUp();
+      broker.StartUpWebsocket();
 
       string pubsubTopic = "demoapp/docs";
       string respTopic = "demoapp/responses";
@@ -251,6 +318,7 @@ namespace DAT.DemoApp {
       producerTwo.Disconnect();
       consumerOne.Disconnect();
       consumerTwo.Disconnect();
+      Task.Delay(10000).Wait();
       broker.TearDown();
     }
 
@@ -283,14 +351,23 @@ namespace DAT.DemoApp {
       {
         for (int i = 0; i < jobCount; i++) {
           var doc = new Document(socket.Configuration.Id + "-" + (i+1), socket.Configuration.Name, "lorem ipsum dolor");
-          Task.Delay(500 + rnd.Next(1000)).Wait();
+          Task.Delay(5000 + rnd.Next(1000)).Wait();
           Console.WriteLine($"Produced doc: {doc}");
           socket.Publish(doc);
+
+          // publish to dmon          
+          var dtnow = DateTime.Now;
+          var dt = String.Format("{0:yyyy-MM-dd-hh-mm-ss-fff}", dtnow); // YYYY-MM-DD-HH-mm-ss-SSS
+          var config = new PublicationOptions("docs", "", QualityOfServiceLevel.ExactlyOnce);          
+          var id = "vessel" + rnd.Next(1, 4);
+          config.Topic += "/" + id;
+          socket.PublishAsync<DmonItem>(new DmonItem(id, "test", 1, id, rnd.NextDouble()*10.0, dt, dt), config);
+
         }
       });
 
       t.Wait();
-    }
+    }    
 
     private static void ProcessDocument(IMessage docMsg, CancellationToken token) {
       Document doc = null;
@@ -327,4 +404,6 @@ namespace DAT.DemoApp {
       return $"Id: {Id}, author: {Author}";
     }
   }
+
+  public record DmonItem(string id, string group, int rank, string title, double value, string timestamp, string systemTimestamp);
 }

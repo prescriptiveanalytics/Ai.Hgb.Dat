@@ -1,6 +1,11 @@
 ﻿using DAT.Configuration;
 using MQTTnet;
 using MQTTnet.Server;
+using MQTTnet.AspNetCore;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 
 // https://blog.behroozbc.ir/c-mqtt-broker-using-mqttnet-version-4
 namespace DAT.Communication {
@@ -26,31 +31,89 @@ namespace DAT.Communication {
 
     public IBroker StartUp() {
       var t = StartUpAsync();
-      t.Wait();
+      t.Wait();         
+
       return this;
     }
 
-    public Task StartUpAsync() {
 
-      var optionsBuilder = new MqttServerOptionsBuilder()
-        .WithDefaultEndpoint()
-        .WithPersistentSessions() // enables QOS-Level 3                
+    private WebApplication webapp;
+    private CancellationTokenSource webappCts;
+    public void StartUpWebsocket() {
+      webappCts = new CancellationTokenSource();
+      var builder = WebApplication.CreateBuilder();
+      builder.WebHost.UseKestrel(o =>
+      {
+        o.ListenAnyIP(1883, l => l.UseMqtt());
+        o.ListenAnyIP(5000);        
+      });
+
+      var optionsBuilder = new MqttServerOptionsBuilder()        
+        //.WithDefaultEndpoint()
+        //.WithPersistentSessions() // enables QOS-Level 3                
         .WithDefaultEndpointPort(Address.Port);
-            
-      server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());                  
+
+      builder.Services.AddMqttServer(optionsBuilder => optionsBuilder.Build());
+      builder.Services.AddMqttConnectionHandler();
+      builder.Services.AddConnections();
+      builder.Services.AddMqttWebSocketServerAdapter();
+
+      webapp = builder.Build();
+      server = webapp.Services.GetService<MqttServer>();
       server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
       server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
       server.ClientConnectedAsync += Server_ClientConnectedAsync;
       server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
       server.StartedAsync += Server_StartedAsync;
       server.StoppedAsync += Server_StoppedAsync;
+
+      webapp.UseRouting();
+      //webapp.UseMqttEndpoint();
+      webapp.UseEndpoints(endpoints =>
+      {
+        //endpoints.MapMqtt("");
+        endpoints.MapMqtt("/mqtt");
+        //endpoints.MapConnectionHandler<MqttConnectionHandler>(
+        //  "/mqtt",
+        //  httpConnectionDispatcherOptions => httpConnectionDispatcherOptions.WebSockets.SubProtocolSelector = protocolList => protocolList.FirstOrDefault() ?? string.Empty);
+
+      });
+
+      //webapp.UseMqttServer(s => { });
+
+      webapp.RunAsync(webappCts.Token);
+    }
+
+    public Task StartUpAsync() {
+
+      StartUpWebsocket();
+      return Task.CompletedTask;
+
+      //var optionsBuilder = new MqttServerOptionsBuilder()
+      //  .WithDefaultEndpoint()
+      //  .WithPersistentSessions() // enables QOS-Level 3                
+      //  .WithDefaultEndpointPort(Address.Port);
+            
       
-      return server.StartAsync();
+      //server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());                  
+      //server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
+      //server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
+      //server.ClientConnectedAsync += Server_ClientConnectedAsync;
+      //server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
+      //server.StartedAsync += Server_StartedAsync;
+      //server.StoppedAsync += Server_StoppedAsync;
+      
+      //return server.StartAsync();
     }
 
 
     public void TearDown() {
       var t = TearDownAsync();
+      
+      Console.WriteLine("Shutdown");
+      webappCts.Cancel();
+      webapp.WaitForShutdown();
+
       t.Wait();
     }
 
