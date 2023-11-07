@@ -22,6 +22,8 @@ namespace DAT.Communication {
 
     IPayloadConverter Converter { get; set; }
 
+    InterfaceStore InterfaceStore { get; }
+
     bool BlockingActionExecution { get; set; }
     
     /// <summary>

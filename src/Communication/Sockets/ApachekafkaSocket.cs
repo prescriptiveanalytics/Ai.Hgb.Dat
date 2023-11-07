@@ -23,6 +23,10 @@ namespace DAT.Communication {
       set => converter = value;
     }
 
+    public InterfaceStore InterfaceStore {
+      get => interfaceStore;
+    }
+
     public bool BlockingActionExecution {
       get => blockingActionExecution;
       set => blockingActionExecution = value;
@@ -35,6 +39,7 @@ namespace DAT.Communication {
     private SocketConfiguration configuration;
 
     private IPayloadConverter converter;
+    InterfaceStore interfaceStore;
     private IProducer<Null, byte[]> producer;
     private IConsumer<Null, byte[]> consumer;
     private ProducerConfig pConfig;
@@ -94,6 +99,7 @@ namespace DAT.Communication {
 
       if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(configuration.DefaultSubscriptionOptions);
 
+      interfaceStore = new InterfaceStore(configuration.Id);
       //if (connect) Connect();
     }
 
@@ -137,7 +143,8 @@ namespace DAT.Communication {
       this.blockingActionExecution = blockingActionExecution;
 
       if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(defSubOptions);
-            
+
+      interfaceStore = new InterfaceStore(configuration.Id);
 
       if (connect) Connect();
     }

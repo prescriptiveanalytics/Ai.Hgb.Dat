@@ -1,5 +1,6 @@
 ﻿using DAT.Communication;
 using DAT.Configuration;
+using Microsoft.AspNetCore.SignalR;
 using MQTTnet;
 using MQTTnet.Client;
 using System.Diagnostics;
@@ -17,12 +18,13 @@ namespace DAT.DemoApp {
       sw.Start();
 
       //RunDemo_RabbitMQTest();
-      RunDemo_Mqtt_DocProducerConsumer();
+      //RunDemo_Mqtt_DocProducerConsumer();
       //RunDemo_Mqtt_DocRequestResponse();
       //RunDemo_ApacheKafka_ProducerConsumer();
       //RunDemo_ReadConfigurations();
       //RunDemo_ConfigurationMonitorBasedProducerConsumer();
       //RunDemo_DisposableBrokerSocket();
+      RunDemo_RegisterTypes();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
@@ -300,6 +302,7 @@ namespace DAT.DemoApp {
       consumerOne.Connect();
       consumerTwo.Connect();
 
+
       consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
       consumerTwo.Subscribe(ProcessDocument, cts.Token); // v1
       //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2
@@ -320,6 +323,19 @@ namespace DAT.DemoApp {
       consumerTwo.Disconnect();
       Task.Delay(10000).Wait();
       broker.TearDown();
+    }
+
+    public static void RunDemo_RegisterTypes() {
+      // setup client
+      HostAddress address = new HostAddress("127.0.0.1", 1883);
+      ISocket producer = new MqttSocket(id: "p1", name: "producerOne", address: address, converter: converter, connect: false);
+
+      // register types
+      producer.InterfaceStore.Register<ComplexDocument>("demo/docs", CommunicationMode.Publish);
+      Console.WriteLine("\n\nRegistered Types: \n\n");
+      Console.WriteLine(producer.InterfaceStore.GenerateSidlText());
+      Console.WriteLine("\n\n");
+      
     }
 
     private static void RequestDocuments(ISocket socket, CancellationToken token, int jobCount) {
@@ -402,6 +418,41 @@ namespace DAT.DemoApp {
 
     public override string ToString() {
       return $"Id: {Id}, author: {Author}";
+    }
+  }
+
+  public class ComplexDocument {
+    public string Id { get; set; }
+    public Person Author { get; set; }
+    public string Text { get; set; }
+
+    public ComplexDocument(string id, Person author, string text) {
+      Id = id;
+      Author = author;
+      Text = text;
+    }
+
+    public override string ToString() {
+      return $"Id: {Id}, author: {Author}";
+    }
+  }
+
+  public struct Person {
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public Address Address { get; set; }
+
+    public override string ToString() {
+      return $"{FirstName} {LastName}, {Address}";
+    }
+  }
+
+  public struct Address {
+    public string City { get; set; }
+    public int Zip { get; set; }
+
+   public override string ToString() {
+      return $"{Zip} {City}";
     }
   }
 

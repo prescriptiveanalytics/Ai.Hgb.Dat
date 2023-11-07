@@ -23,6 +23,10 @@ namespace DAT.Communication {
       set => converter = value;
     }
 
+    public InterfaceStore InterfaceStore {
+      get => interfaceStore;
+    }
+
     public bool BlockingActionExecution {
       get => blockingActionExecution;
       set => blockingActionExecution = value;
@@ -36,6 +40,7 @@ namespace DAT.Communication {
 
     private IPayloadConverter converter;
     private IManagedMqttClient client;
+    InterfaceStore interfaceStore;
     private CancellationTokenSource cts;
     private AutoResetEvent connected;
     private AutoResetEvent disconnected;
@@ -47,6 +52,7 @@ namespace DAT.Communication {
 
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
+    
 
     public MqttSocket(SocketConfiguration configuration) {
       this.configuration = configuration;
@@ -75,6 +81,8 @@ namespace DAT.Communication {
       client.ConnectedAsync += Client_ConnectedAsync;
       client.DisconnectedAsync += Client_DisconnectedAsync;
       client.ConnectingFailedAsync += Client_ConnectingFailedAsync;
+
+      interfaceStore = new InterfaceStore(configuration.Id);
 
       //if (connect) Connect();
 
@@ -113,7 +121,9 @@ namespace DAT.Communication {
       client.DisconnectedAsync += Client_DisconnectedAsync;
       client.ConnectingFailedAsync += Client_ConnectingFailedAsync;
 
-      if(connect) Connect();
+      interfaceStore = new InterfaceStore(configuration.Id);
+
+      if (connect) Connect();
     }
 
     public object Clone() {
