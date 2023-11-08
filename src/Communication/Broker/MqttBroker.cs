@@ -15,11 +15,18 @@ namespace DAT.Communication {
       private set { if (!value.Equals(address)) address = value; }
     }
 
+    public bool ConsoleLogging {
+      get => consoleLogging;
+      set => consoleLogging = value;
+    }
+
     private HostAddress address;
     private MqttServer server;
+    private bool consoleLogging;
 
-    public MqttBroker(HostAddress address) {
+    public MqttBroker(HostAddress address, bool consoleLogging = false) {
       this.address = address;
+      this.consoleLogging = consoleLogging;
     }
 
     public void Dispose() {
@@ -31,7 +38,7 @@ namespace DAT.Communication {
 
     public IBroker StartUp() {
       var t = StartUpAsync();
-      t.Wait();         
+      t.Wait();
 
       return this;
     }
@@ -45,10 +52,10 @@ namespace DAT.Communication {
       builder.WebHost.UseKestrel(o =>
       {
         o.ListenAnyIP(1883, l => l.UseMqtt());
-        o.ListenAnyIP(5000);        
+        o.ListenAnyIP(5000);
       });
 
-      var optionsBuilder = new MqttServerOptionsBuilder()        
+      var optionsBuilder = new MqttServerOptionsBuilder()
         //.WithDefaultEndpoint()
         //.WithPersistentSessions() // enables QOS-Level 3                
         .WithDefaultEndpointPort(Address.Port);
@@ -93,8 +100,8 @@ namespace DAT.Communication {
       //  .WithDefaultEndpoint()
       //  .WithPersistentSessions() // enables QOS-Level 3                
       //  .WithDefaultEndpointPort(Address.Port);
-            
-      
+
+
       //server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());                  
       //server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
       //server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
@@ -102,15 +109,15 @@ namespace DAT.Communication {
       //server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
       //server.StartedAsync += Server_StartedAsync;
       //server.StoppedAsync += Server_StoppedAsync;
-      
+
       //return server.StartAsync();
     }
 
 
     public void TearDown() {
       var t = TearDownAsync();
-      
-      Console.WriteLine("Shutdown");
+
+      if (consoleLogging) Console.WriteLine("Shutdown");
       webappCts.Cancel();
       webapp.WaitForShutdown();
 
@@ -122,32 +129,32 @@ namespace DAT.Communication {
     }
 
     private Task Server_StartedAsync(EventArgs arg) {
-      Console.WriteLine($"MqttBroker: Broker started.");
+      if (consoleLogging) Console.WriteLine($"MqttBroker: Broker started.");
       return Task.CompletedTask;
     }
 
     private Task Server_StoppedAsync(EventArgs arg) {
-      Console.WriteLine($"MqttBroker: Broker stopped.");
+      if (consoleLogging) Console.WriteLine($"MqttBroker: Broker stopped.");
       return Task.CompletedTask;
     }
 
     private Task Server_ClientConnectedAsync(ClientConnectedEventArgs arg) {
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} connected.");
+      if (consoleLogging) Console.WriteLine($"MqttBroker: Client {arg.ClientId} connected.");
       return Task.CompletedTask;
     }
 
     private Task Server_ClientDisconnectedAsync(ClientDisconnectedEventArgs arg) {
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} disconnected.");
+      if (consoleLogging) Console.WriteLine($"MqttBroker: Client {arg.ClientId} disconnected.");
       return Task.CompletedTask;
     }
 
-    private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {      
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");      
+    private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {
+      if (consoleLogging) Console.WriteLine($"MqttBroker: Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");
       return Task.CompletedTask;
     }
 
-    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {      
-      Console.WriteLine($"MqttBroker: Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");
+    private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {
+      if (consoleLogging) Console.WriteLine($"MqttBroker: Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");
       return Task.CompletedTask;
     }
   }
