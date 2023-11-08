@@ -1,4 +1,5 @@
 ﻿using DAT.Configuration;
+using DAT.Utils;
 using System.Net.Mime;
 
 namespace DAT.Communication {
@@ -12,6 +13,8 @@ namespace DAT.Communication {
     byte[] Payload { get; set; }
 
     QualityOfServiceLevel QOS { get; set;}
+    long Timestamp { get; set; }  
+
 
     object Content { get; set; }
   }
@@ -26,6 +29,7 @@ namespace DAT.Communication {
     public string ResponseTopic { get; set; }
     public object Content { get; set; }
     public QualityOfServiceLevel QOS { get; set; }
+    public long Timestamp { get; set; }
 
 
     public Message() { }
@@ -37,6 +41,7 @@ namespace DAT.Communication {
       ResponseTopic = msg.ResponseTopic;
       ContentType = msg.ContentType;
       Payload = msg.Payload != null ? msg.Payload.ToArray() : msg.Payload;
+      Timestamp= msg.Timestamp;
     }
 
     public Message(string clientId, string clientName, string topic, string responseTopic, string contentType, byte[] payload, QualityOfServiceLevel qos = QualityOfServiceLevel.ExactlyOnce) {
@@ -47,6 +52,7 @@ namespace DAT.Communication {
       ContentType = contentType;
       Payload = payload != null ? payload.ToArray() : payload;
       QOS = qos;
+      Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     }
 
     public object Clone() {
