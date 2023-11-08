@@ -3,6 +3,7 @@ using DAT.Utils;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
+using MQTTnet.Internal;
 using MQTTnet.Protocol;
 using System;
 using System.Net.Mime;
@@ -44,6 +45,7 @@ namespace DAT.Communication {
     private CancellationTokenSource cts;
     private AutoResetEvent connected;
     private AutoResetEvent disconnected;
+    private AutoResetEvent connectionChanged;
     private object locker;
 
     private HashSet<SubscriptionOptions> subscriptions;
@@ -68,6 +70,7 @@ namespace DAT.Communication {
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
       disconnected = new AutoResetEvent(false);
+      connectionChanged = new AutoResetEvent(false);
       client = new MqttFactory().CreateManagedMqttClient();
 
       subscriptions = new HashSet<SubscriptionOptions>();
@@ -88,8 +91,6 @@ namespace DAT.Communication {
 
     }
 
-
-
     public MqttSocket(string id, string name, HostAddress address, IPayloadConverter converter, SubscriptionOptions defSubOptions = null, PublicationOptions defPubOptions = null, RequestOptions defReqOptions = null, bool blockingActionExecution = false, bool connect = true) {
       configuration = new SocketConfiguration();
       configuration.Id = id;
@@ -102,6 +103,7 @@ namespace DAT.Communication {
       cts = new CancellationTokenSource();
       connected = new AutoResetEvent(false);
       disconnected = new AutoResetEvent(false);
+      connectionChanged= new AutoResetEvent(false);
       client = new MqttFactory().CreateManagedMqttClient();      
 
       subscriptions = new HashSet<SubscriptionOptions>();
@@ -120,11 +122,13 @@ namespace DAT.Communication {
       client.ConnectedAsync += Client_ConnectedAsync;
       client.DisconnectedAsync += Client_DisconnectedAsync;
       client.ConnectingFailedAsync += Client_ConnectingFailedAsync;
+      client.ConnectionStateChangedAsync += Client_ConnectionStateChangedAsync;
 
       interfaceStore = new InterfaceStore(configuration.Id);
 
       if (connect) Connect();
     }
+
 
     public object Clone() {
       return new MqttSocket(Configuration.Id, Configuration.Name, Configuration.Broker, Converter,
@@ -228,6 +232,12 @@ namespace DAT.Communication {
       return t;
     }
 
+    private Task Client_ConnectionStateChangedAsync(EventArgs arg) {
+      connectionChanged.Set();
+
+      return Task.CompletedTask;
+    }
+
     private void OnMessageReceived_BeforeRegisteredHandlers(IMessage message) {
       var handler = MessageReceived_BeforeRegisteredHandlers;
       if (handler != null) handler(this, new EventArgs<IMessage>(message));
@@ -301,9 +311,18 @@ namespace DAT.Communication {
 
       if (IsConnected()) {
         subscriptions.Add(o);
+
+        // V0 ... buggy
         //client.SubscribeAsync(o.Topic, GetQosLevel(o.QosLevel)).Wait(cts.Token);        
-        client.SubscribeAsync(o.Topic).Wait(cts.Token);
-        Task.Delay(1).Wait(); // ensure subscription (due to buggy client implementation of SubscribeAsync)
+        //client.SubscribeAsync(o.Topic).Wait(cts.Token);
+        //connectionChanged.WaitOne();
+
+        // V1 ... infeasible (ensure context switch, i.e. subscription, due to buggy client implementation of SubscribeAsync)
+        //client.SubscribeAsync(o.Topic).Wait(cts.Token);
+        //Task.Delay(10).Wait();
+
+        // V2
+        client.InternalClient.SubscribeAsync(o.Topic).Wait(cts.Token);
       }
       else {
         pendingSubscriptions.Add(o);

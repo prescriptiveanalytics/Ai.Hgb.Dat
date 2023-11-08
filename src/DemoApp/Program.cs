@@ -19,16 +19,21 @@ namespace DAT.DemoApp {
 
       //RunDemo_RabbitMQTest();
       //RunDemo_Mqtt_DocProducerConsumer();
-      //RunDemo_Mqtt_DocRequestResponse();
+      RunDemo_Mqtt_DocRequestResponse();
+      //RunDemo_Mqtt_DocRequestResponseMultipleClients();
       //RunDemo_ApacheKafka_ProducerConsumer();
       //RunDemo_ReadConfigurations();
       //RunDemo_ConfigurationMonitorBasedProducerConsumer();
       //RunDemo_DisposableBrokerSocket();
-      RunDemo_RegisterTypes();
+      //RunDemo_RegisterTypes();
 
       sw.Stop();
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
+    }
+
+    static unsafe void DisplaySizeOf<T>() where T : unmanaged {
+      Console.WriteLine($"Size of {typeof(T)} is {sizeof(T)}");
     }
 
     public static void RunDemo_Websockets() {
@@ -227,7 +232,50 @@ namespace DAT.DemoApp {
     public static void RunDemo_Mqtt_DocRequestResponse() {
       var cts = new CancellationTokenSource();
 
-      int requestsPerClient = 10;
+      int requestsPerClient = 100000;
+      ce = new CountdownEvent(requestsPerClient);
+
+      HostAddress address = new HostAddress("127.0.0.1", 1883);
+      converter = new JsonPayloadConverter();
+
+      IBroker broker = new MqttBroker(address);
+      broker.StartUp();
+
+      string pubsubTopic = "demoapp/docs";
+      string respTopic = "demoapp/responses";
+      string reqTopic = "demoapp/docs";
+      var pubOptions = new PublicationOptions(pubsubTopic, respTopic, QualityOfServiceLevel.ExactlyOnce);
+      var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
+      var reqOptions = new RequestOptions(reqTopic, respTopic, true);
+
+      ISocket server = new MqttSocket("s1", "server", address, converter, null, pubOptions, reqOptions);
+      ISocket client = new MqttSocket("c1", "client", address, converter, null, pubOptions, reqOptions);
+
+      //server.Connect();
+      //client.Connect();
+
+      //Thread.Sleep(1000);
+
+      // do work
+      var serverTask = Task.Factory.StartNew(() => ServeDocuments(server, cts.Token), cts.Token);
+      Task.Delay(100).Wait();
+      var clientTask = Task.Factory.StartNew(() => RequestDocuments(client, cts.Token, requestsPerClient), cts.Token);
+
+
+      Console.WriteLine("Waiting for completion...");
+      Task.WaitAll(new Task[] { clientTask });
+
+
+      // tear down
+      server.Disconnect();
+      client.Disconnect();
+      broker.TearDown();
+    }
+
+    public static void RunDemo_Mqtt_DocRequestResponseMultipleClients() {
+      var cts = new CancellationTokenSource();
+
+      int requestsPerClient = 50;
       ce = new CountdownEvent(requestsPerClient * 2); // two clients
 
       HostAddress address = new HostAddress("127.0.0.1", 1883);
@@ -256,6 +304,7 @@ namespace DAT.DemoApp {
 
       // do work
       var serverTask = Task.Factory.StartNew(() => ServeDocuments(server, cts.Token), cts.Token);
+      Task.Delay(100).Wait(); 
       var clientTaskOne = Task.Factory.StartNew(() => RequestDocuments(clientOne, cts.Token, requestsPerClient), cts.Token);
       var clientTaskTwo = Task.Factory.StartNew(() => RequestDocuments(clientTwo, cts.Token, requestsPerClient), cts.Token);
 
@@ -338,11 +387,20 @@ namespace DAT.DemoApp {
       
     }
 
+    public static void RunDemo_CheckMessageSize() {
+      //unsafe {
+      //  var x = sizeof(Document);
+      //  Console.WriteLine(x);
+      //}
+
+      DisplaySizeOf<FixedSizeDocument>();
+    }
+
     private static void RequestDocuments(ISocket socket, CancellationToken token, int jobCount) {
       
       for(int i = 0; i < jobCount; i++) {
         var doc = socket.Request<Document>();
-        Console.WriteLine($"Client {socket.Configuration.Name} rocessing doc: {doc}");        
+        //Console.WriteLine($"Client {socket.Configuration.Name} processing doc: {doc}");        
       }
     }
 
@@ -354,8 +412,8 @@ namespace DAT.DemoApp {
       socket.Subscribe((IMessage docReq, CancellationToken token) => {
         count = Interlocked.Increment(ref count);
         var doc = new Document(socket.Configuration.Id + "-" + count, "server", "lorem ipsum dolor");
-        Task.Delay(500 + rnd.Next(1000)).Wait();
-        Console.WriteLine($"Produced doc: {doc}");
+        //Task.Delay(500 + rnd.Next(1000)).Wait();
+        //Console.WriteLine($"Produced doc: {doc}");
         var pOpt = new PublicationOptions(docReq.ResponseTopic, "", QualityOfServiceLevel.ExactlyOnce);
         socket.Publish(doc, pOpt);
       }, token, o.GetRequestSubscriptionOptions());
@@ -386,7 +444,7 @@ namespace DAT.DemoApp {
     }    
 
     private static void ProcessDocument(IMessage docMsg, CancellationToken token) {
-      Document doc = null;
+      Document doc;
       if (docMsg.Content != null && docMsg.Content is Document) doc = (Document)docMsg.Content;
       else doc = converter.Deserialize<Document>(docMsg.Payload);
 
@@ -404,7 +462,7 @@ namespace DAT.DemoApp {
     }
   }
 
-  public class Document {
+  public struct Document {
 
     public string Id { get; set; }
     public string Author { get; set; }
@@ -419,6 +477,28 @@ namespace DAT.DemoApp {
     public override string ToString() {
       return $"Id: {Id}, author: {Author}";
     }
+  }
+
+  public unsafe struct FixedSizeDocument {
+
+    public int Id;
+    public fixed char Author[256];
+    public fixed char Text[1024];
+
+    public FixedSizeDocument() {
+      Id = 0;
+      Author[0] = 'a';
+    }
+
+    //public FixedSizeDocument(string id, string author, string text) {
+    //  Id = id;
+    //  Author = author.ToArray();
+    //  Text = text;
+    //}
+
+    //public override string ToString() {
+    //  return $"Id: {Id}, author: {}";
+    //}
   }
 
   public class ComplexDocument {
@@ -454,6 +534,14 @@ namespace DAT.DemoApp {
    public override string ToString() {
       return $"{Zip} {City}";
     }
+  }
+
+  public struct Point {
+    public Point(byte tag, double x, double y) => (Tag, X, Y) = (tag, x, y);
+
+    public byte Tag { get; }
+    public double X { get; }
+    public double Y { get; }
   }
 
   public record DmonItem(string id, string group, int rank, string title, double value, string timestamp, string systemTimestamp);
