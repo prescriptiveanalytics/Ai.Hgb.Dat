@@ -31,11 +31,7 @@ namespace DAT.DemoApp {
       Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
     }
-
-    static unsafe void DisplaySizeOf<T>() where T : unmanaged {
-      Console.WriteLine($"Size of {typeof(T)} is {sizeof(T)}");
-    }
-
+    
     public static void RunDemo_Websockets() {
 
     }
@@ -232,7 +228,7 @@ namespace DAT.DemoApp {
     public static void RunDemo_Mqtt_DocRequestResponse() {
       var cts = new CancellationTokenSource();
 
-      int requestsPerClient = 100000;
+      int requestsPerClient = 1000;
       ce = new CountdownEvent(requestsPerClient);
 
       HostAddress address = new HostAddress("127.0.0.1", 1883);
@@ -351,10 +347,11 @@ namespace DAT.DemoApp {
       consumerOne.Connect();
       consumerTwo.Connect();
 
-
+      
       consumerOne.Subscribe(ProcessDocument, cts.Token); // v1
       consumerTwo.Subscribe(ProcessDocument, cts.Token); // v1
       //consumerOne.Subscribe<Document>(ProcessDocument, cts.Token); // v2
+      
 
       // do work
       Task.Factory.StartNew(() => ProduceDocuments(producerOne, jobsPerProducer));
@@ -387,15 +384,6 @@ namespace DAT.DemoApp {
       
     }
 
-    public static void RunDemo_CheckMessageSize() {
-      //unsafe {
-      //  var x = sizeof(Document);
-      //  Console.WriteLine(x);
-      //}
-
-      DisplaySizeOf<FixedSizeDocument>();
-    }
-
     private static void RequestDocuments(ISocket socket, CancellationToken token, int jobCount) {
       
       for(int i = 0; i < jobCount; i++) {
@@ -409,14 +397,15 @@ namespace DAT.DemoApp {
       var o = socket.Configuration.DefaultRequestOptions;
       var count = 0;
       
-      socket.Subscribe((IMessage docReq, CancellationToken token) => {
-        count = Interlocked.Increment(ref count);
-        var doc = new Document(socket.Configuration.Id + "-" + count, "server", "lorem ipsum dolor");
-        //Task.Delay(500 + rnd.Next(1000)).Wait();
-        //Console.WriteLine($"Produced doc: {doc}");
-        var pOpt = new PublicationOptions(docReq.ResponseTopic, "", QualityOfServiceLevel.ExactlyOnce);
-        socket.Publish(doc, pOpt);
-      }, token, o.GetRequestSubscriptionOptions());
+      socket.Subscribe(o.GetRequestSubscriptionOptions(),
+        (IMessage docReq, CancellationToken token) => {
+          count = Interlocked.Increment(ref count);
+          var doc = new Document(socket.Configuration.Id + "-" + count, "server", "lorem ipsum dolor");
+          //Task.Delay(500 + rnd.Next(1000)).Wait();
+          //Console.WriteLine($"Produced doc: {doc}");
+          var pOpt = new PublicationOptions(docReq.ResponseTopic, "", QualityOfServiceLevel.ExactlyOnce);
+          socket.Publish(pOpt, doc);        
+      }, token);
     }
 
     private static void ProduceDocuments(ISocket socket, int jobCount) {
@@ -435,7 +424,7 @@ namespace DAT.DemoApp {
           var config = new PublicationOptions("docs", "", QualityOfServiceLevel.ExactlyOnce);          
           var id = "vessel" + rnd.Next(1, 4);
           config.Topic += "/" + id;
-          socket.PublishAsync<DmonItem>(new DmonItem(id, "test", 1, id, rnd.NextDouble()*10.0, dt, dt), config);
+          socket.PublishAsync<DmonItem>(config, new DmonItem(id, "test", 1, id, rnd.NextDouble()*10.0, dt, dt));
 
         }
       });

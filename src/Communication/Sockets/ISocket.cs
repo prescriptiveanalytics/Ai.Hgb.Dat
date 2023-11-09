@@ -38,24 +38,54 @@ namespace DAT.Communication {
 
     bool IsConnected();
 
-    void Subscribe(SubscriptionOptions options);
+    void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null);
 
-    void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
+    void Subscribe(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null);
 
-    void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null);
+    void Subscribe(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null);
+
+    void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null);
+
+    void Subscribe<T>(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null);
+
+    void Subscribe<T>(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null);
 
     void Unsubscribe(string topic = null);
 
-    void Publish<T>(T message, PublicationOptions options = null);
+    void Publish<T>(T payload);
 
-    Task PublishAsync<T>(T message, PublicationOptions options = null);
+    void Publish<T>(string topic, T payload);
 
-    T Request<T>(RequestOptions options = null);
+    void Publish<T>(PublicationOptions options, T payload);
 
-    Task<T> RequestAsync<T>(RequestOptions options = null);
+    Task PublishAsync<T>(T payload);
 
-    T1 Request<T1, T2>(T2 message, RequestOptions options = null);
+    Task PublishAsync<T>(string topic, T payload);
 
-    Task<T1> RequestAsync<T1, T2>(T2 message, RequestOptions options = null);
+    Task PublishAsync<T>(PublicationOptions options, T payload);
+
+    T Request<T>();
+
+    T Request<T>(string topic, string responseTopic, bool generateResponseTopicPostfix = true);
+
+    T Request<T>(RequestOptions options);
+
+    Task<T> RequestAsync<T>();
+
+    Task<T> RequestAsync<T>(string topic, string responseTopic, bool generateResponseTopicPostfix = true);
+
+    Task<T> RequestAsync<T>(RequestOptions options);
+
+    T1 Request<T1, T2>(T2 payload);
+
+    T1 Request<T1, T2>(string topic, string responseTopic, bool generateResponseTopicPostfix, T2 payload);
+
+    T1 Request<T1, T2>(RequestOptions options, T2 payload);
+
+    Task<T1> RequestAsync<T1, T2>(T2 payload);
+
+    Task<T1> RequestAsync<T1, T2>(string topic, string responseTopic, bool generateResponseTopicPostfix, T2 payload);
+
+    Task<T1> RequestAsync<T1, T2>(RequestOptions options, T2 payload);
   }
 }

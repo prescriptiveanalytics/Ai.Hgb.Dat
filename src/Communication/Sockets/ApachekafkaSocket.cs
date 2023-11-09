@@ -330,7 +330,7 @@ namespace DAT.Communication {
     }
 
     public async Task<T> RequestAsync<T>(RequestOptions options = null) {      
-      return await RequestAsync<T, object>(null, options);
+      return await RequestAsync<T, object>(options);
     }
 
     public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {
@@ -431,6 +431,94 @@ namespace DAT.Communication {
         instance.Content = converter.Deserialize(msg.Payload, type);
         return instance;
       }
+    }
+
+    public void Subscribe(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      throw new NotImplementedException();
+    }
+
+    public void Subscribe(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      throw new NotImplementedException();
+    }
+
+    public void Subscribe<T>(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      throw new NotImplementedException();
+    }
+
+    public void Subscribe<T>(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      throw new NotImplementedException();
+    }
+
+    public void Publish<T>(string topic, T payload) {
+      throw new NotImplementedException();
+    }
+
+    public void Publish<T>(PublicationOptions options, T payload) {
+      throw new NotImplementedException();
+    }
+
+    public Task PublishAsync<T>(string topic, T payload) {
+      throw new NotImplementedException();
+    }
+
+    public Task PublishAsync<T>(PublicationOptions options, T payload) {
+      throw new NotImplementedException();
+    }
+
+    public T Request<T>(string topic, string responseTopic, bool generateResponseTopicPostfix = true) {
+      throw new NotImplementedException();
+    }
+
+    public Task<T> RequestAsync<T>(string topic, string responseTopic, bool generateResponseTopicPostfix = true) {
+      throw new NotImplementedException();
+    }
+
+    public T1 Request<T1, T2>(string topic, string responseTopic, bool generateResponseTopicPostfix, T2 payload) {
+      throw new NotImplementedException();
+    }
+
+    public T1 Request<T1, T2>(RequestOptions options, T2 payload) {
+      throw new NotImplementedException();
+    }
+
+    public Task<T1> RequestAsync<T1, T2>(string topic, string responseTopic, bool generateResponseTopicPostfix, T2 payload) {
+      throw new NotImplementedException();
+    }
+
+    public Task<T1> RequestAsync<T1, T2>(RequestOptions options, T2 payload) {
+      throw new NotImplementedException();
+    }
+
+    public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      throw new NotImplementedException();
+    }
+
+    public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      throw new NotImplementedException();
+    }
+
+    public void Publish<T>(T payload) {
+      throw new NotImplementedException();
+    }
+
+    public Task PublishAsync<T>(T payload) {
+      throw new NotImplementedException();
+    }
+
+    public T Request<T>() {
+      throw new NotImplementedException();
+    }
+
+    public Task<T> RequestAsync<T>() {
+      throw new NotImplementedException();
+    }
+
+    public T1 Request<T1, T2>(T2 payload) {
+      throw new NotImplementedException();
+    }
+
+    public Task<T1> RequestAsync<T1, T2>(T2 payload) {
+      throw new NotImplementedException();
     }
 
     #endregion helper

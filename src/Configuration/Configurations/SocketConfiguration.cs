@@ -34,7 +34,11 @@ namespace DAT.Configuration {
     public RequestOptions DefaultRequestOptions { get; set; }
     
 
-    public SocketConfiguration() { }
+    public SocketConfiguration() { 
+      DefaultPublicationOptions = new PublicationOptions();
+      DefaultSubscriptionOptions = new SubscriptionOptions();
+      DefaultRequestOptions = new RequestOptions(); 
+    }
 
     public object Clone() {
       var c = new SocketConfiguration();

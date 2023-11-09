@@ -78,7 +78,7 @@ namespace DAT.Communication {
       actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
       promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
 
-      if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(configuration.DefaultSubscriptionOptions);
+      if (!string.IsNullOrWhiteSpace(configuration.DefaultSubscriptionOptions.Topic)) pendingSubscriptions.Add(configuration.DefaultSubscriptionOptions);
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
       client.ConnectedAsync += Client_ConnectedAsync;
@@ -111,12 +111,12 @@ namespace DAT.Communication {
       actions = new Dictionary<SubscriptionOptions, List<ActionItem>>();
       promises = new Dictionary<RequestOptions, TaskCompletionSource<IMessage>>();
 
-      configuration.DefaultSubscriptionOptions = defSubOptions;
-      configuration.DefaultPublicationOptions = defPubOptions;
-      configuration.DefaultRequestOptions = defReqOptions;
+      if (defSubOptions != null) configuration.DefaultSubscriptionOptions = defSubOptions;
+      if (defPubOptions != null) configuration.DefaultPublicationOptions = defPubOptions;
+      if (defReqOptions != null) configuration.DefaultRequestOptions = defReqOptions;
       this.blockingActionExecution = blockingActionExecution;
 
-      if (configuration.DefaultSubscriptionOptions != null) pendingSubscriptions.Add(defSubOptions);
+      if (!string.IsNullOrWhiteSpace(configuration.DefaultSubscriptionOptions.Topic)) pendingSubscriptions.Add(configuration.DefaultSubscriptionOptions);
 
       client.ApplicationMessageReceivedAsync += Client_ApplicationMessageReceivedAsync;
       client.ConnectedAsync += Client_ConnectedAsync;
@@ -306,7 +306,7 @@ namespace DAT.Communication {
       return client != null && client.IsConnected;
     }
 
-    public void Subscribe(SubscriptionOptions options) {
+    private void Subscribe(SubscriptionOptions options) {
       var o = options != null ? options : configuration.DefaultSubscriptionOptions;
 
       if (IsConnected()) {
@@ -329,7 +329,18 @@ namespace DAT.Communication {
       }
     }
 
-    public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
+    public void Subscribe(Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      var o = (SubscriptionOptions)configuration.DefaultSubscriptionOptions.Clone();      
+      Subscribe(o);
+    }
+
+    public void Subscribe(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      var o = (SubscriptionOptions)configuration.DefaultSubscriptionOptions.Clone();
+      o.Topic = topic;
+      Subscribe(o);
+    }
+
+    public void Subscribe(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
       var o = options != null ? options : configuration.DefaultSubscriptionOptions;
 
       if (!actions.ContainsKey(o)) actions.Add(o, new List<ActionItem>());
@@ -339,7 +350,22 @@ namespace DAT.Communication {
       Subscribe(o);
     }
 
-    public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null, SubscriptionOptions options = null) {
+    public void Subscribe<T>( Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      var o = (SubscriptionOptions)configuration.DefaultSubscriptionOptions.Clone();
+
+      Subscribe<T>(o, handler, token);
+    }
+
+    public void Subscribe<T>(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+      var o = (SubscriptionOptions)configuration.DefaultSubscriptionOptions.Clone();
+      o.Topic = topic;
+      o.ContentType= typeof(T);
+      o.ContentTypeFullName= o.ContentType.FullName;
+
+      Subscribe<T>(o, handler, token);
+    }
+
+    public void Subscribe<T>(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
       var o = options != null ? options : configuration.DefaultSubscriptionOptions; // use new or default options as base
       if (o.ContentType != typeof(T)) { // create new options if requested type does not match the base
         o = (SubscriptionOptions)o.Clone();
@@ -364,12 +390,34 @@ namespace DAT.Communication {
       }
     }
 
-    public void Publish<T>(T payload, PublicationOptions options = null) {
-      var task = PublishAsync(payload, options);
+    public void Publish<T>(T payload) {
+      var o = (PublicationOptions)configuration.DefaultPublicationOptions.Clone();      
+      Publish(o, payload);
+    }
+
+    public void Publish<T>(string topic, T payload) {
+      var o = (PublicationOptions)configuration.DefaultPublicationOptions.Clone();
+      o.Topic = topic;
+      Publish(o, payload);
+    }
+
+    public void Publish<T>(PublicationOptions options, T payload) {
+      var task = PublishAsync(options, payload);
       task.Wait(cts.Token);
     }
 
-    public async Task PublishAsync<T>(T payload, PublicationOptions options = null) {
+    public async Task PublishAsync<T>(T payload) {
+      var o = (PublicationOptions)configuration.DefaultPublicationOptions.Clone();      
+      await PublishAsync(o, payload);
+    }
+
+    public async Task PublishAsync<T>(string topic, T payload) {
+      var o = (PublicationOptions)configuration.DefaultPublicationOptions.Clone();
+      o.Topic = topic;
+      await PublishAsync(o, payload);
+    }
+
+    public async Task PublishAsync<T>(PublicationOptions options, T payload) {
       var o = options != null ? options : configuration.DefaultPublicationOptions;
 
       // setup message      
@@ -389,23 +437,76 @@ namespace DAT.Communication {
       await client.EnqueueAsync(mappMessage);
     }
 
-    public T Request<T>(RequestOptions options = null) {
+    public T Request<T>() {
+      var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
+
+      return Request<T>(o);
+    }
+
+    public T Request<T>(string topic, string responseTopic, bool generateResponseTopicPostfix = true) {
+      var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
+      o.Topic = topic;
+      o.ResponseTopic = responseTopic;
+      o.GenerateResponseTopicPostfix = generateResponseTopicPostfix;
+
+      return Request<T>(o);
+    }
+
+    public T Request<T>(RequestOptions options) {
       if (!IsConnected()) throw new Exception("MqttSocket: Socket must be connected before a blocking request can be made.");
             
       return RequestAsync<T>(options).Result;
     }
 
-    public T1 Request<T1, T2>(T2 message, RequestOptions options = null) {
+    public async Task<T> RequestAsync<T>() {
+      return await RequestAsync<T, object>(null);
+    }
+
+    public async Task<T> RequestAsync<T>(string topic, string responseTopic, bool generateResponseTopicPostfix) {
+      return await RequestAsync<T, object>(topic, responseTopic, generateResponseTopicPostfix, null);
+    }
+
+    public async Task<T> RequestAsync<T>(RequestOptions options) {         
+      return await RequestAsync<T, object>(options, null);
+    }
+
+    public T1 Request<T1, T2>(T2 payload) {
+      var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
+
+      return Request<T1, T2>(o, payload);
+    }
+
+    public T1 Request<T1, T2>(string topic, string responseTopic, bool generateResponseTopicPostfix, T2 payload) {
+      var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
+      o.Topic = topic;
+      o.ResponseTopic = responseTopic;
+      o.GenerateResponseTopicPostfix = generateResponseTopicPostfix;
+
+      return Request<T1, T2>(o, payload);
+    }
+
+    public T1 Request<T1, T2>(RequestOptions options, T2 payload) {
       if (!IsConnected()) throw new Exception("MqttSocket: Socket must be connected before a blocking request can be made.");
 
-      return RequestAsync<T1, T2>(message, options).Result;
+      return RequestAsync<T1, T2>(options, payload).Result;
     }
 
-    public async Task<T> RequestAsync<T>(RequestOptions options = null) {         
-      return await RequestAsync<T, object>(null, options);
+    public async Task<T1> RequestAsync<T1, T2>(T2 payload) {
+      var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
+
+      return await RequestAsync<T1, T2>(o, payload);
     }
 
-    public async Task<T1> RequestAsync<T1, T2>(T2 payload, RequestOptions options = null) {
+    public async Task<T1> RequestAsync<T1, T2>(string topic, string responseTopic, bool generateResponseTopicPostfix, T2 payload) {
+      var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
+      o.Topic = topic;
+      o.ResponseTopic = responseTopic;
+      o.GenerateResponseTopicPostfix = generateResponseTopicPostfix;
+
+      return await RequestAsync<T1, T2>(o, payload);
+    }
+
+    public async Task<T1> RequestAsync<T1, T2>(RequestOptions options, T2 payload) {
       // parse options
       var o = options != null ? (RequestOptions)options.Clone() : (RequestOptions)configuration.DefaultRequestOptions.Clone();
       var rt = o.GenerateResponseTopicPostfix

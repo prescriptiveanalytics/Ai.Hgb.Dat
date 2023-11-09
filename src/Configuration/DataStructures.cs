@@ -46,7 +46,6 @@ namespace DAT.Configuration {
     ExactlyOnce
   }
 
-
   public class SubscriptionOptions : ICloneable {
 
     public string Topic { get; set; }
@@ -55,12 +54,16 @@ namespace DAT.Configuration {
 
     public string ContentTypeFullName { get; set; } 
 
-    public SubscriptionOptions() { }
+    public SubscriptionOptions() {
+      Topic = null;
+      QosLevel = QualityOfServiceLevel.ExactlyOnce;
+      ContentType = null;      
+    }
 
     public SubscriptionOptions(string topic, QualityOfServiceLevel qosLevel, Type contentType = null) {
       Topic = topic;
       QosLevel = qosLevel;
-      ContentType = contentType;
+      ContentType = contentType;      
     }
 
     public object Clone() {
@@ -82,7 +85,11 @@ namespace DAT.Configuration {
     // mqtt client: check if topic uses work queue and send additional ack message after subscribed handler task(s) are completed
     public bool UseWorkQueue;
 
-    public PublicationOptions() { }
+    public PublicationOptions() {
+      Topic = null;
+      ResponseTopic = null;
+      QosLevel = QualityOfServiceLevel.ExactlyOnce;
+    }
 
 
     public PublicationOptions(string topic, string responseTopic, QualityOfServiceLevel qosLevel) {
@@ -102,7 +109,11 @@ namespace DAT.Configuration {
     public string ResponseTopic { get; set; }
     public bool GenerateResponseTopicPostfix { get; set; }
 
-    public RequestOptions() { }
+    public RequestOptions() {
+      Topic = null;
+      ResponseTopic = null;
+      GenerateResponseTopicPostfix = true;      
+    }
 
     public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix = true) {
       Topic = topic;
