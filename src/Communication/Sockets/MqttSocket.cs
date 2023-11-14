@@ -528,7 +528,8 @@ namespace DAT.Communication {
 
       // setup message
       string contentType = payload != null ? typeof(T2).FullName : "";
-      IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, payload);
+      //IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, payload);
+      IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, converter.Serialize<T2>(payload), payload);
 
       appMessageBuilder = msg != null
         ? appMessageBuilder.WithPayload(converter.Serialize(msg))
@@ -574,7 +575,7 @@ namespace DAT.Communication {
         instance.ClientId = msg.ClientId;
         instance.Topic = msg.Topic;
         instance.ResponseTopic = msg.ResponseTopic;
-        instance.Payload = msg.Payload.ToArray();
+        instance.Payload = msg.Payload != null ? msg.Payload.ToArray() : null;
         instance.ContentType = msg.ContentType;
 
         instance.Content = converter.Deserialize(msg.Payload, type);

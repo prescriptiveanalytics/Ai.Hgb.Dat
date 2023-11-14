@@ -5,7 +5,8 @@ namespace DAT.Communication {
   public class JsonPayloadConverter : IPayloadConverter {
     public T Deserialize<T>(byte[] payload) {
       if (payload == null) return default(T);
-      return JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(payload));
+      return JsonSerializer.Deserialize<T>(payload);
+      //return JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(payload));
     }
 
     public object Deserialize(byte[] payload, Type type = null) {
