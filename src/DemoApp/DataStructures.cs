@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MemoryPack;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -65,23 +66,37 @@ namespace DAT.DemoApp {
     public double Y { get; }
   }
 
-  public class DoubleTypedPopulation {
-    public double Fits { get; set; }
-    public double[] Candidates { get; set; }
+  [MemoryPackable]
+  public partial class DoubleTypedEncoding {
+    public double Fit { get; set; }
+    public double[] Value { get; set; }
     public int Length { get; set; }
 
-    public DoubleTypedPopulation() { }
+    [MemoryPackConstructor]
+    public DoubleTypedEncoding() { }
 
-    public DoubleTypedPopulation(int length) {
+    public DoubleTypedEncoding(int length) {
       this.Length = length;
-      Candidates = new double[length];
-      Fits = 0;
+      Value = new double[length];
+      Fit = 0;
     }
 
-    public DoubleTypedPopulation(double fits, double[] candidates) {
-      Fits = fits;
-      Candidates = candidates;
+    public DoubleTypedEncoding(double fits, double[] candidates) {
+      Fit = fits;
+      Value = candidates;
       Length = candidates.Length;
+    }
+  }
+
+  [MemoryPackable]
+  public partial class DoubleTypedArray {
+    public double[] Value { get; set; }
+
+    [MemoryPackConstructor]
+    public DoubleTypedArray() { }
+
+    public DoubleTypedArray(int length) {
+      Value = new double[length];
     }
   }
 

@@ -1,5 +1,6 @@
 ﻿using DAT.Configuration;
 using DAT.Utils;
+using MemoryPack;
 using System.Net.Mime;
 
 namespace DAT.Communication {
@@ -60,10 +61,12 @@ namespace DAT.Communication {
     }
   }
 
-  public class Message<T> : Message {
+  [MemoryPackable]
+  public partial class Message<T> : Message {
 
     public new T Content { get; set; }
 
+    [MemoryPackConstructor]
     public Message() { }
 
     public Message(Message msg) : base(msg) { }

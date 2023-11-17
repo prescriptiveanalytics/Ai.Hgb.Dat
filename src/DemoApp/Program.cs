@@ -35,82 +35,14 @@ namespace DAT.DemoApp {
       //RunDemo_MQTTandWS_StreamDoubleData();
 
       //RunDemo_PerformanceTest_SharedMemorySocket();
-      RunDemo_PerformanceTest_MQTTSocket();
+
+      //PerformanceTestSuite.RunSuite();
+      PerformanceTestSuite.RunIndividualTests();
+
 
       sw.Stop();
-      Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
+      //Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
-    }
-
-    public static void RunDemo_PerformanceTest_MQTTSocket() {
-      var cts = new CancellationTokenSource();
-
-      int count = 10000;
-      int arrayLength = 10;
-
-      ce = new CountdownEvent(count);
-
-      HostAddress address = new HostAddress("127.0.0.1", 1883);
-      converter = new JsonPayloadConverter();
-
-      IBroker broker = new MqttBroker(address);
-      broker.StartUp();
-
-      string pubsubTopic = "demoapp/pop";
-      string respTopic = "demoapp/responses";
-      string reqTopic = "demoapp/pop";
-      var pubOptions = new PublicationOptions(pubsubTopic, respTopic, QualityOfServiceLevel.ExactlyOnce);
-      var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
-      var reqOptions = new RequestOptions(reqTopic, respTopic, true);
-
-      ISocket server = new MqttSocket("s1", "server", address, converter, null, pubOptions, reqOptions);
-      ISocket client = new MqttSocket("c1", "client", address, converter, null, pubOptions, reqOptions);
-
-      // do work
-      var serverTask = Task.Factory.StartNew(() => ServePopulation(server, cts.Token), cts.Token);
-      Task.Delay(10).Wait();
-      var clientTask = Task.Factory.StartNew(() => RequestPopulation(client, cts.Token, count, arrayLength), cts.Token);
-
-
-      Console.WriteLine("Waiting for completion...");
-      Task.WaitAll(new Task[] { clientTask });
-
-      // tear down
-      server.Disconnect();
-      client.Disconnect();
-      broker.TearDown();
-    }
-
-    public static void RunDemo_PerformanceTest_SharedMemorySocket() {
-      var cts = new CancellationTokenSource();
-
-      int count = 10000;
-      int arrayLength = 10;
-
-      converter = new JsonPayloadConverter();
-      var socket1 = new SharedMemorySocket("server", converter);
-      var socket2 = new SharedMemorySocket("client", converter);
-
-      socket1.Subscribe<DoubleTypedPopulation, DoubleTypedPopulation>("gae-solutions", ProcessRequest, cts.Token);
-
-      var pop = new DoubleTypedPopulation(arrayLength);
-      pop.Fits = 1.0;
-      for (int a = 0; a < pop.Length; a++) pop.Candidates[a] = 0.1;
-      Console.WriteLine("bytes: " + converter.Serialize(pop).Length);
-      Console.WriteLine();
-
-      for (int i = 0; i < count; i++) {
-        var popNew = socket2.Request<DoubleTypedPopulation, DoubleTypedPopulation>("gae-solutions", pop, cts.Token).Result;
-        //Console.WriteLine($"{i}: {popNew.Fits}");
-      }
-
-      socket1.Close();
-      socket2.Close();
-    }
-
-    private static DoubleTypedPopulation ProcessRequest(DoubleTypedPopulation pop, CancellationToken token) {
-      pop.Fits = 2.0;
-      return pop;
     }
 
     public static void RunDemo_Websockets() {
@@ -564,35 +496,6 @@ namespace DAT.DemoApp {
         ce.Signal();
         Console.WriteLine($"Processed doc: {doc.ToString()}");
       }
-    }
-
-    private static void RequestPopulation(ISocket socket, CancellationToken token, int jobCount, int arrayLength) {
-
-      var pop = new DoubleTypedPopulation(arrayLength);
-      pop.Fits = 1.0;
-      for (int a = 0; a < pop.Length; a++) pop.Candidates[a] = 0.1;
-
-      for (int i = 0; i < jobCount; i++) {
-        var newpop = socket.Request<DoubleTypedPopulation, DoubleTypedPopulation>(pop);
-      }
-    }
-
-    private static void ServePopulation(ISocket socket, CancellationToken token) {
-      var rnd = new Random();
-      var o = socket.Configuration.DefaultRequestOptions;
-
-      socket.Subscribe<DoubleTypedPopulation>(o.GetRequestSubscriptionOptions(),
-        (IMessage popMsg, CancellationToken token) =>
-        {
-          DoubleTypedPopulation pop;
-          if (popMsg.Content != null && popMsg.Content is DoubleTypedPopulation) pop = (DoubleTypedPopulation)popMsg.Content;
-          else pop = converter.Deserialize<DoubleTypedPopulation>(popMsg.Payload);
-
-          // modify
-          pop.Fits = 2.0;
-
-          socket.Publish(popMsg.ResponseTopic, pop);
-        }, token);
     }
 
   }

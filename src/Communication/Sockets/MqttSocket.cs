@@ -62,7 +62,7 @@ namespace DAT.Communication {
 
       if (configuration.PayloadType == "json") converter = new JsonPayloadConverter();
       else if (configuration.PayloadType == "yaml") converter = new YamlPayloadConverter();
-
+      else if (configuration.PayloadType == "memp") converter = new MemoryPackPayloadConverter();
 
       //this.blockingActionExecution = blockingActionExecution;
 
@@ -164,8 +164,7 @@ namespace DAT.Communication {
 
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
       // parse received message
-      Message msg = converter.Deserialize<Message>(arg.ApplicationMessage.PayloadSegment.Array);
-      
+      Message msg = converter.Deserialize<Message>(arg.ApplicationMessage.PayloadSegment.Array);      
 
       // fire message received event (before executing individually registered handlers)
       OnMessageReceived_BeforeRegisteredHandlers(msg);
@@ -350,7 +349,7 @@ namespace DAT.Communication {
       Subscribe(o);
     }
 
-    public void Subscribe<T>( Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
+    public void Subscribe<T>(Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
       var o = (SubscriptionOptions)configuration.DefaultSubscriptionOptions.Clone();
 
       Subscribe<T>(o, handler, token);
@@ -529,10 +528,11 @@ namespace DAT.Communication {
       // setup message
       string contentType = payload != null ? typeof(T2).FullName : "";
       //IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, payload);
-      IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, converter.Serialize<T2>(payload), payload);
+      var msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, converter.Serialize<T2>(payload), payload);
+      var serMsg = converter.Serialize(msg);
 
       appMessageBuilder = msg != null
-        ? appMessageBuilder.WithPayload(converter.Serialize(msg))
+        ? appMessageBuilder.WithPayload(serMsg)
         : appMessageBuilder;
 
       var mappMessage = new ManagedMqttApplicationMessageBuilder()
