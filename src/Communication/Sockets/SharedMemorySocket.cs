@@ -451,23 +451,38 @@ namespace DAT.Communication.Sockets {
     }
 
     public void Write<T>(T message) {
-      int localWriterIndex;
-      lock (locker) {
-        localWriterIndex = writerIndex;
-        writerIndex = (writerIndex + 1) % capacity;
-      }
-
       var bytes = converter.Serialize(message);
-      Items[localWriterIndex].Write(bytes);
+
+      // V1
+      //int localWriterIndex;
+      //lock (locker) {
+      //  localWriterIndex = writerIndex;
+      //  writerIndex = (writerIndex + 1) % capacity;
+      //}
+      //Items[localWriterIndex].Write(bytes);
+
+      // V2
+      lock(locker) {
+        writerIndex = (writerIndex + 1) % capacity;
+        Items[writerIndex].Write(bytes);
+      }
     }
 
     public T Read<T>() {
-      int localReaderIndex;
+      // V1
+      //int localReaderIndex;
+      //lock (locker) {
+      //  localReaderIndex = readerIndex;
+      //  readerIndex = (readerIndex + 1) % capacity;
+      //}
+      //var bytes = Items[localReaderIndex].Read();
+
+      // V2
+      byte[] bytes;
       lock (locker) {
-        localReaderIndex = readerIndex;
         readerIndex = (readerIndex + 1) % capacity;
+        bytes = Items[readerIndex].Read();
       }
-      var bytes = Items[localReaderIndex].Read();
 
       return converter.Deserialize<T>(bytes);
     }

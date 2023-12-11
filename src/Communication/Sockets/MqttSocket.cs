@@ -1,4 +1,5 @@
-﻿using DAT.Configuration;
+﻿using Confluent.Kafka;
+using DAT.Configuration;
 using DAT.Utils;
 using MQTTnet;
 using MQTTnet.Client;
@@ -163,19 +164,18 @@ namespace DAT.Communication {
     }
 
     private Task Client_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg) {
-      // parse received message
-      Message msg = converter.Deserialize<Message>(arg.ApplicationMessage.PayloadSegment.Array);      
+      // MemoryPackWorkaround:
+      // - read topic from arg, not from msg anymore: if arg topic is modified intermediately, this could lead to unwanted side effects
+      // - deserialize always with type; if type is null, deserialization fails
 
-      // fire message received event (before executing individually registered handlers)
-      OnMessageReceived_BeforeRegisteredHandlers(msg);
-
-      // collect actions and promises to be executed
       var actionList = new List<Tuple<SubscriptionOptions, ActionItem>>();
-      var promiseList = new List<TaskCompletionSource<IMessage>>();
+      var promiseList = new List<Tuple<RequestOptions, TaskCompletionSource<IMessage>>>();
+      Type genericType = null;
 
       lock (actions) {
         foreach (var item in actions) {
-          if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+          if (Misc.CompareTopics(item.Key.Topic, arg.ApplicationMessage.Topic)) {
+            genericType = item.Key.ContentType;
             foreach (var ai in item.Value) actionList.Add(Tuple.Create(item.Key, ai));
           }
         }
@@ -183,11 +183,59 @@ namespace DAT.Communication {
 
       lock (promises) {
         foreach (var item in promises) {
-          if (Misc.CompareTopics(item.Key.ResponseTopic, msg.Topic)) {
-            promiseList.Add(item.Value);
+          if (Misc.CompareTopics(item.Key.ResponseTopic, arg.ApplicationMessage.Topic)) {
+            genericType = item.Key.ContentType;
+            promiseList.Add(Tuple.Create(item.Key, item.Value));
           }
         }
       }
+
+
+
+      // parse received message V1
+      var msg = converter.Deserialize<Message>(arg.ApplicationMessage.PayloadSegment.Array);
+      var imsg = CreateIMessage(msg, genericType);
+
+      // parse received message V2
+      //Type message_genericTypeDef = typeof(Message<>);
+      //Type[] typeArgs = { genericType };
+      //var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
+      //var imsg = (IMessage)converter.Deserialize(arg.ApplicationMessage.PayloadSegment.Array, requestedType);
+
+      // ISM workaround:
+      //var param = arg.ApplicationMessage.PayloadSegment.Array;
+      //IMessage imsg = converter.Deserialize<Message<DoubleTypedArray>>(param);
+
+      // backlog:
+      //var genericMethod = converter.GetType().GetMethods().FirstOrDefault(
+      //  x => x.Name.Equals("Deserialize", StringComparison.OrdinalIgnoreCase) &&
+      //  x.IsGenericMethod && x.GetParameters().Length == 1)
+      //  ?.MakeGenericMethod(genericType);
+      //dynamic result = genericMethod.Invoke(converter, new object[] { param });
+      //var imsg = (IMessage)result;  
+
+      // fire message received event (before executing individually registered handlers)
+      OnMessageReceived_BeforeRegisteredHandlers(imsg);
+
+      // collect actions and promises to be executed
+      //var actionList = new List<Tuple<SubscriptionOptions, ActionItem>>();
+      //var promiseList = new List<Tuple<RequestOptions, TaskCompletionSource<IMessage>>>();
+
+      //lock (actions) {
+      //  foreach (var item in actions) {
+      //    if (Misc.CompareTopics(item.Key.Topic, msg.Topic)) {
+      //      foreach (var ai in item.Value) actionList.Add(Tuple.Create(item.Key, ai));
+      //    }
+      //  }
+      //}
+
+      //lock (promises) {
+      //  foreach (var item in promises) {
+      //    if (Misc.CompareTopics(item.Key.ResponseTopic, msg.Topic)) {
+      //      promiseList.Add(Tuple.Create(item.Key, item.Value));
+      //    }
+      //  }
+      //}
 
       // execute collected actions and promises
       Task t;
@@ -197,13 +245,14 @@ namespace DAT.Communication {
         {
           foreach (var item in actionList) {
             if (!cts.IsCancellationRequested) {
-              var imsg = CreateIMessage(msg, item.Item1.ContentType);
+              //var imsg = CreateIMessage(msg, item.Item1.ContentType);
               item.Item2.Action(imsg, item.Item2.Token);
             }
           }
           foreach (var item in promiseList) {
             if (!cts.IsCancellationRequested) {                            
-              item.TrySetResult(msg);
+              item.Item2.TrySetResult(imsg);
+              //item.Item2.TrySetResult(msg);
             }
           }
 
@@ -213,20 +262,21 @@ namespace DAT.Communication {
         // v2: blocking (threadsafe behavior regarding processing order)
         foreach (var item in actionList) {
           if (!cts.IsCancellationRequested) {
-            var imsg = CreateIMessage(msg, item.Item1.ContentType);
+            //var imsg = CreateIMessage(msg, item.Item1.ContentType);
             item.Item2.Action(imsg, item.Item2.Token);
           }
         }
         foreach (var item in promiseList) {
           if (!cts.IsCancellationRequested) {
-            item.TrySetResult(msg);
+            item.Item2.TrySetResult(imsg);
+            //item.Item2.TrySetResult(msg);
           }
         }
         t = Task.CompletedTask;
       }
 
       // fire message received event (after executing individually registered handlers)
-      OnMessageReceived_AfterRegisteredHandlers(msg);
+      OnMessageReceived_AfterRegisteredHandlers(imsg);
 
       return t;
     }
@@ -421,6 +471,7 @@ namespace DAT.Communication {
 
       // setup message      
       var msg = new Message<T>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, typeof(T).FullName, converter.Serialize<T>(payload), payload);
+      //var msg = new Message<T>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, typeof(T).FullName, null, payload);
 
       var appMessage = new MqttApplicationMessageBuilder()
         .WithTopic(msg.Topic)
@@ -512,6 +563,8 @@ namespace DAT.Communication {
         ? string.Concat(o.ResponseTopic, "/", Misc.GenerateId(10))
         : o.ResponseTopic;      
       o.ResponseTopic = rt;
+      o.ContentType = typeof(T1);
+      o.ContentTypeFullName = o.ContentType.FullName;
 
       // configure promise
       var promise = new TaskCompletionSource<IMessage>();

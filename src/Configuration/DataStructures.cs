@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
@@ -108,25 +109,32 @@ namespace DAT.Configuration {
     public string Topic { get; set; }
     public string ResponseTopic { get; set; }
     public bool GenerateResponseTopicPostfix { get; set; }
+    public Type ContentType { get; set; }
+
+    public string ContentTypeFullName { get; set; }
 
     public RequestOptions() {
       Topic = null;
       ResponseTopic = null;
-      GenerateResponseTopicPostfix = true;      
+      GenerateResponseTopicPostfix = true;
+      ContentType = null;
+      ContentTypeFullName = "";
     }
 
-    public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix = true) {
+    public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix = true, Type contentType = null, string contentTypeFullName = "") {
       Topic = topic;
       ResponseTopic = responseTopic;
       GenerateResponseTopicPostfix = generateResponseTopicPostfix;
+      ContentType = contentType;
+      ContentTypeFullName = contentTypeFullName;
     }
 
     public object Clone() {
-      return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix);
+      return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix, ContentType, ContentTypeFullName);
     }
 
     public SubscriptionOptions GetRequestSubscriptionOptions() {
-      return new SubscriptionOptions(Topic, QualityOfServiceLevel.ExactlyOnce);
+      return new SubscriptionOptions(Topic, QualityOfServiceLevel.ExactlyOnce, ContentType);
     }
 
     public SubscriptionOptions GetResponseSubscriptionOptions() {

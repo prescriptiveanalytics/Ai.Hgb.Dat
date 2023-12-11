@@ -61,12 +61,12 @@ namespace DAT.Communication {
     }
   }
 
-  [MemoryPackable]
-  public partial class Message<T> : Message {
+  //[MemoryPackable]
+  public class Message<T> : Message {
 
     public new T Content { get; set; }
 
-    [MemoryPackConstructor]
+    //[MemoryPackConstructor]
     public Message() { }
 
     public Message(Message msg) : base(msg) { }
@@ -97,6 +97,18 @@ namespace DAT.Communication {
 
     public object Clone() {
       return new ActionItem(Action, Token);
+    }
+  }
+
+  [MemoryPackable]
+  public partial class DoubleTypedArray {
+    public double[] Value { get; set; }
+
+    [MemoryPackConstructor]
+    public DoubleTypedArray() { }
+
+    public DoubleTypedArray(int length) {
+      Value = new double[length];
     }
   }
 }

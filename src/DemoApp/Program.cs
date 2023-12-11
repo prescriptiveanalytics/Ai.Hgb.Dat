@@ -34,10 +34,8 @@ namespace DAT.DemoApp {
       //RunDemo_RegisterTypes();
       //RunDemo_MQTTandWS_StreamDoubleData();
 
-      //RunDemo_PerformanceTest_SharedMemorySocket();
-
-      //PerformanceTestSuite.RunSuite();
       PerformanceTestSuite.RunIndividualTests();
+      //PerformanceTestSuite.RunSuite();
 
 
       sw.Stop();

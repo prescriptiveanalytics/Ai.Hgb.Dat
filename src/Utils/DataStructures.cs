@@ -13,5 +13,4 @@ namespace DAT.Utils {
       Value = value;
     }
   }
-
 }
