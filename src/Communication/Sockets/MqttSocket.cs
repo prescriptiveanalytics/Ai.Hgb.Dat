@@ -386,7 +386,7 @@ namespace DAT.Communication {
     public void Subscribe(string topic, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
       var o = (SubscriptionOptions)configuration.DefaultSubscriptionOptions.Clone();
       o.Topic = topic;
-      Subscribe(o);
+      Subscribe(o, handler, token);
     }
 
     public void Subscribe(SubscriptionOptions options, Action<IMessage, CancellationToken> handler, CancellationToken? token = null) {
