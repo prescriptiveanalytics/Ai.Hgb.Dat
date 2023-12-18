@@ -25,7 +25,7 @@ jobs:
       id: nbgv
       name: install semantic versioning tool (nerdbank.gitversioning)
     - run: echo 'SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
-
+    - run: nbgv cloud 
         
     - name: Setup dotnet
       uses: actions/setup-dotnet@v3
