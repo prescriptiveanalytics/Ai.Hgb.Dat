@@ -45,4 +45,4 @@ jobs:
       
     - name: publish every release to NuGet.org
       run: dotnet nuget push src/jsonv/bin/Release/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json
-      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads/release/v**')
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads/release/v')
