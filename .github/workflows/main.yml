@@ -15,15 +15,16 @@ jobs:
     name: Build, Test and (Publish if not pull request) ${{ matrix.dotnet }}
     
     steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 # avoid shallow clone so nbgv can work.
     - uses: dotnet/nbgv@master
       with:
         setAllVars: true
       id: nbgv
       name: install semantic versioning tool (nerdbank.gitversioning)
     
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0 # avoid shallow clone so nbgv can work.
+
         
     - name: Setup dotnet
       uses: actions/setup-dotnet@v3
