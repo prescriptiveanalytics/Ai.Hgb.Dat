@@ -2,12 +2,9 @@ name: CI/CD
 
 on:
   pull_request: # CI (pr validation)
-    branches: 
-      - master 
+    branches: [ "main" ]
   push:         # CI (ci package)
-    branches: 
-      - master 
-      - 'release/v**'
+    branches: [ "main", "release/v**" ]
 
 jobs:
   build:
@@ -33,7 +30,6 @@ jobs:
         
     - name: dotnet build release
       run: dotnet build src/Communication -c Release
-    # - run: dotnet test src/Communication.Tests -c Release
     - name: dotnet pack release 
       run: dotnet pack src/Communication -c Release
 
