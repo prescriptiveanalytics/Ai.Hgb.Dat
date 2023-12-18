@@ -25,7 +25,6 @@ jobs:
       id: nbgv
       name: install semantic versioning tool (nerdbank.gitversioning)
     - run: echo 'SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
-    - run: nbgv cloud 
         
     - name: Setup dotnet
       uses: actions/setup-dotnet@v3
@@ -35,10 +34,10 @@ jobs:
     - name: dotnet build release
       run: dotnet build src/Communication -c Release
     - name: dotnet pack release 
-      run: dotnet pack src/Communication -c Release -p:Version=${{ steps.nbgv.outputs.SemVer2 }}
+      run: dotnet pack src/Communication -c Release /p:Version=${{ steps.nbgv.outputs.SemVer2 }}
 
     - name: Prep packages
-      run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
+      run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/DistributedApplicationTools/index.json"
   
     - name: push every (non Pull Request) package to github
       run: dotnet nuget push src/Communication/bin/Release/*.nupkg --api-key ${{ secrets.SPA_DAT_PackageDeployment_Token }} --source "github"
