@@ -37,7 +37,7 @@ jobs:
       run: dotnet pack src/Communication -c Release /p:Version=${{ steps.nbgv.outputs.SemVer2 }}
 
     - name: Prep packages
-      run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/DistributedApplicationTools/index.json"
+      run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
   
     - name: push every (non Pull Request) package to github
       run: dotnet nuget push src/Communication/bin/Release/*.nupkg --api-key ${{ secrets.SPA_DAT_PackageDeployment_Token }} --source "github"
