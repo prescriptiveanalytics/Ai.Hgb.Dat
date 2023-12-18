@@ -15,7 +15,9 @@ jobs:
     name: Build, Test and (Publish if not pull request) ${{ matrix.dotnet }}
     
     steps:
-    - uses: dotnet/nbgv@v0.4.x
+    - uses: dotnet/nbgv@master
+      with:
+        setAllVars: true
       id: nbgv
       name: install semantic versioning tool (nerdbank.gitversioning)
     
