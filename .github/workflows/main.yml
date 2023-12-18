@@ -18,12 +18,13 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0 # avoid shallow clone so nbgv can work.
+        
     - uses: dotnet/nbgv@master
       with:
         setAllVars: true
       id: nbgv
       name: install semantic versioning tool (nerdbank.gitversioning)
-    
+    - run: echo 'SemVer2=${{ steps.nbgv.outputs.SemVer2 }}'
 
         
     - name: Setup dotnet
@@ -34,7 +35,7 @@ jobs:
     - name: dotnet build release
       run: dotnet build src/Communication -c Release
     - name: dotnet pack release 
-      run: dotnet pack src/Communication -c Release
+      run: dotnet pack src/Communication -c Release -p:Version=${{ steps.nbgv.outputs.SemVer2 }}
 
     - name: Prep packages
       run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
