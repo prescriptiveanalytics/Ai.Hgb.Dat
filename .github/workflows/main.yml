@@ -34,7 +34,7 @@ jobs:
     - name: dotnet build release
       run: dotnet build src/Communication -c Release
     - name: dotnet pack release 
-      run: dotnet pack src/Communication -c Release /p:Version=${{ steps.nbgv.outputs.SemVer2 }}
+      run: dotnet pack src/Communication -c Release -p:PackageVersion=${{ steps.nbgv.outputs.SemVer2 }}
 
     - name: Prep packages
       run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
