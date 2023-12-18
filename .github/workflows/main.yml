@@ -1,0 +1,49 @@
+name: CI/CD
+
+on:
+  pull_request: # CI (pr validation)
+    branches: 
+      - master 
+  push:         # CI (ci package)
+    branches: 
+      - master 
+      - 'release/v**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet: [ '7.0.x' ]
+    name: Build, Test and (Publish if not pull request) ${{ matrix.dotnet }}
+    
+    steps:
+    - uses: dotnet/nbgv@v0.4.x
+      id: nbgv
+      name: install semantic versioning tool (nerdbank.gitversioning)
+    
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 # avoid shallow clone so nbgv can work.
+        
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ matrix.dotnet }}
+        
+    - name: dotnet build release
+      run: dotnet build src/Communication -c Release
+    # - run: dotnet test src/Communication.Tests -c Release
+    - name: dotnet pack release 
+      run: dotnet pack src/Communication -c Release
+
+    - name: Prep packages
+      run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
+  
+    - name: push every (non Pull Request) package to github
+      run: dotnet nuget push src/Communication/bin/Release/*.nupkg --api-key ${{ secrets.SPA_DAT_PackageDeployment_Token }} --source "github"
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
+      
+    - name: publish every release to NuGet.org
+      run: dotnet nuget push src/jsonv/bin/Release/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads/release/v*')
