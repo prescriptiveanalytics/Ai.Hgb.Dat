@@ -5,7 +5,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>DAT.$(MSBuildProjectName)</AssemblyName>
-    <RootNamespace>DAT.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <RootNamespace>DAT.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>		
   </PropertyGroup>
+	
+	<PropertyGroup>
+		<VersionPrefix>0.3.4</VersionPrefix>
+		<VersionSuffix>alpha</VersionSuffix>
+	</PropertyGroup>
 
 </Project>

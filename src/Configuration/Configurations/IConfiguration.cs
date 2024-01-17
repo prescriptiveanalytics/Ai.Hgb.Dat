@@ -1,11 +1,10 @@
 ﻿using DAT.Utils;
 
 namespace DAT.Configuration {
-  public interface IConfiguration : ICloneable {
-    string Url { get; set; }
+  public interface IConfiguration : ICloneable {    
 
     string Type { get; set; }
-
+    public string Url { get; set; }
     bool MonitorConfiguration { get; set; }
 
     int MonitorIntervalMilliseconds { get; set; }
