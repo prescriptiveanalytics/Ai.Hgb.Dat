@@ -30,19 +30,17 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{ matrix.dotnet }}
+
         
     - name: dotnet build release
       run: dotnet build src/Communication -c Release
+      
     - name: dotnet pack release 
-      run: dotnet pack src/Communication -c Release -p:PackageVersion=${{ steps.nbgv.outputs.SemVer2 }}
+      run: dotnet pack src/Communication -c Release
 
     - name: Prep packages
       run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
   
-    - name: push every (non Pull Request) package to github
-      run: dotnet nuget push src/Communication/bin/Release/*.nupkg --api-key ${{ secrets.SPA_DAT_PackageDeployment_Token }} --source "github"
-      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
-      
     - name: publish every release to NuGet.org
       run: dotnet nuget push src/Communication/bin/Release/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json
       if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
