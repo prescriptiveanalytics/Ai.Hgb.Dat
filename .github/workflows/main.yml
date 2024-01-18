@@ -15,7 +15,8 @@ jobs:
     name: Build, Test and (Publish if not pull request) ${{ matrix.dotnet }}
     
     steps:
-    - uses: actions/checkout@v2
+    - name: checkout repository
+      uses: actions/checkout@v2
       with:
         fetch-depth: 0 # avoid shallow clone so nbgv can work.
         
@@ -30,17 +31,30 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{ matrix.dotnet }}
-
         
-    - name: dotnet build release
-      run: dotnet build src/Communication -c Release
-      
-    - name: dotnet pack release 
-      run: dotnet pack src/Communication -c Release
-
     - name: Prep packages
       run: dotnet nuget add source --username florianBachinger --password ${{ secrets.SPA_DAT_PackageDeployment_Token }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/prescriptiveanalytics/index.json"
   
+    - name: dotnet build release
+      run: dotnet build src/Communication -c Release
+    - name: dotnet pack release 
+      run: dotnet pack src/Communication -c Release
     - name: publish every release to NuGet.org
       run: dotnet nuget push src/Communication/bin/Release/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
+
+    - name: dotnet build release
+      run: dotnet build src/Configuration -c Release
+    - name: dotnet pack release 
+      run: dotnet pack src/Configuration -c Release
+    - name: publish every release to NuGet.org
+      run: dotnet nuget push src/Configuration/bin/Release/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
+
+    - name: dotnet build release
+      run: dotnet build src/Utils -c Release
+    - name: dotnet pack release 
+      run: dotnet pack src/Utils -c Release
+    - name: publish every release to NuGet.org
+      run: dotnet nuget push src/Utils/bin/Release/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json
       if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
