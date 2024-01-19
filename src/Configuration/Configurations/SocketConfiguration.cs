@@ -58,6 +58,8 @@ namespace DAT.Configuration {
       c.DefaultSubscriptionOptions = (SubscriptionOptions)DefaultSubscriptionOptions.Clone();
       c.DefaultRequestOptions = (RequestOptions)DefaultRequestOptions.Clone();
 
+      c.Routing = (RoutingTable)Routing.Clone();
+
       return c;
     }
 

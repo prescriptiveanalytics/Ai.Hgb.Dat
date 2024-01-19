@@ -53,6 +53,8 @@ namespace DAT.Configuration {
       c.BaseTopic = BaseTopic;
       c.PayloadType = PayloadType;
 
+      c.Routing = (RoutingTable)Routing.Clone();
+
       return c;
     }
 
