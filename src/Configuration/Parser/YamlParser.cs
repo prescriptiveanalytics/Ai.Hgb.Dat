@@ -33,6 +33,8 @@ namespace DAT.Configuration {
       
       if(config.Type == "Socket") {
         config = dser.Deserialize<SocketConfiguration>(doc);        
+      } else if(config.Type == "Broker") {
+        config = dser.Deserialize<BrokerConfiguration>(doc);
       }
 
       config.Url = uri;

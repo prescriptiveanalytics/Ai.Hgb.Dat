@@ -22,6 +22,8 @@ namespace DAT.Configuration {
     public string BaseTopic { get; set; }
     public string PayloadType { get; set; }
 
+    public RoutingTable Routing { get; set; }
+
     public BrokerConfiguration() {
 
     }

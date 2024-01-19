@@ -32,30 +32,31 @@ namespace DAT.Configuration {
     public SubscriptionOptions DefaultSubscriptionOptions { get; set; }
 
     public RequestOptions DefaultRequestOptions { get; set; }
-    
 
-    public SocketConfiguration() { 
+    public RoutingTable Routing { get; set; }
+
+    public SocketConfiguration() {
       DefaultPublicationOptions = new PublicationOptions();
       DefaultSubscriptionOptions = new SubscriptionOptions();
-      DefaultRequestOptions = new RequestOptions(); 
+      DefaultRequestOptions = new RequestOptions();
     }
 
     public object Clone() {
       var c = new SocketConfiguration();
 
-      c.Type = Type;    
+      c.Type = Type;
       c.Url = Url;
       c.MonitorConfiguration = MonitorConfiguration;
-      c.MonitorIntervalMilliseconds= MonitorIntervalMilliseconds;
-      c.Name= Name;
-      c.Id= Id;
-      c.SocketType= SocketType;
-      c.Broker= Broker;
-      c.BaseTopic= BaseTopic;
-      c.PayloadType= PayloadType;
+      c.MonitorIntervalMilliseconds = MonitorIntervalMilliseconds;
+      c.Name = Name;
+      c.Id = Id;
+      c.SocketType = SocketType;
+      c.Broker = Broker;
+      c.BaseTopic = BaseTopic;
+      c.PayloadType = PayloadType;
       c.DefaultPublicationOptions = (PublicationOptions)DefaultPublicationOptions.Clone();
-      c.DefaultSubscriptionOptions= (SubscriptionOptions)DefaultSubscriptionOptions.Clone();
-      c.DefaultRequestOptions= (RequestOptions)DefaultRequestOptions.Clone();
+      c.DefaultSubscriptionOptions = (SubscriptionOptions)DefaultSubscriptionOptions.Clone();
+      c.DefaultRequestOptions = (RequestOptions)DefaultRequestOptions.Clone();
 
       return c;
     }
