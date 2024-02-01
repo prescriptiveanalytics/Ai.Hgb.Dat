@@ -1,11 +1,5 @@
-﻿using Ai.Hgb.Dat.Utils;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
+﻿using Ai.Hgb.Common.Entities;
+using Ai.Hgb.Dat.Utils;
 
 namespace Ai.Hgb.Dat.Configuration {
   public class BrokerConfiguration : IConfiguration {
@@ -22,7 +16,7 @@ namespace Ai.Hgb.Dat.Configuration {
     public string BaseTopic { get; set; }
     public string PayloadType { get; set; }
 
-    //public RoutingTable Routing { get; set; }
+    public RoutingTable Routing { get; set; }
 
     public BrokerConfiguration() {
 
@@ -53,7 +47,7 @@ namespace Ai.Hgb.Dat.Configuration {
       c.BaseTopic = BaseTopic;
       c.PayloadType = PayloadType;
 
-      //c.Routing = (RoutingTable)Routing.Clone();
+      c.Routing = (RoutingTable)Routing.Clone();
 
       return c;
     }

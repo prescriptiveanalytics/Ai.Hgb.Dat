@@ -1,4 +1,5 @@
-﻿using Ai.Hgb.Dat.Utils;
+﻿using Ai.Hgb.Common.Entities;
+using Ai.Hgb.Dat.Utils;
 
 namespace Ai.Hgb.Dat.Configuration {
   public class SocketConfiguration : IConfiguration {
@@ -28,7 +29,7 @@ namespace Ai.Hgb.Dat.Configuration {
 
     public RequestOptions DefaultRequestOptions { get; set; }
 
-    //public RoutingTable Routing { get; set; }
+    public RoutingTable Routing { get; set; }
 
     public SocketConfiguration() {
       DefaultPublicationOptions = new PublicationOptions();
@@ -53,7 +54,7 @@ namespace Ai.Hgb.Dat.Configuration {
       c.DefaultSubscriptionOptions = (SubscriptionOptions)DefaultSubscriptionOptions.Clone();
       c.DefaultRequestOptions = (RequestOptions)DefaultRequestOptions.Clone();
 
-      //c.Routing = (RoutingTable)Routing.Clone();
+      c.Routing = (RoutingTable)Routing.Clone();
 
       return c;
     }
