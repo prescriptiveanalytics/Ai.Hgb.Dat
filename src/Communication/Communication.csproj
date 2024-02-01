@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Ai.Hgb.Dat.$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>Ai.Hgb.Dat.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>    
@@ -23,7 +23,7 @@
 	
   <ItemGroup>
 		<ProjectReference Include="..\Configuration\Configuration.csproj" PrivateAssets="All" />
-		<ProjectReference Include="..\Utils\Utils.csproj"  PrivateAssets="All" />
+		<ProjectReference Include="..\Utils\Utils.csproj" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>

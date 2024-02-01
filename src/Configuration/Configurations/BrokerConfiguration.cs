@@ -22,7 +22,7 @@ namespace Ai.Hgb.Dat.Configuration {
     public string BaseTopic { get; set; }
     public string PayloadType { get; set; }
 
-    public RoutingTable Routing { get; set; }
+    //public RoutingTable Routing { get; set; }
 
     public BrokerConfiguration() {
 
@@ -53,7 +53,7 @@ namespace Ai.Hgb.Dat.Configuration {
       c.BaseTopic = BaseTopic;
       c.PayloadType = PayloadType;
 
-      c.Routing = (RoutingTable)Routing.Clone();
+      //c.Routing = (RoutingTable)Routing.Clone();
 
       return c;
     }
