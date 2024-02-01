@@ -1,13 +1,13 @@
 ﻿using Confluent.Kafka;
-using DAT.Configuration;
-using DAT.Utils;
+using Ai.Hgb.Dat.Configuration;
+using Ai.Hgb.Dat.Utils;
 using Microsoft.Extensions.Configuration;
 using MQTTnet;
 using System.Net;
 using System.Net.Sockets;
 using System.Xml.Linq;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   public class ApachekafkaSocket : ISocket {
 
     public SocketConfiguration Configuration {

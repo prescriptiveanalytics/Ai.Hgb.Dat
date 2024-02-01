@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using YamlDotNet.Core.Tokens;
 
-namespace DAT.Communication.Sockets {
+namespace Ai.Hgb.Dat.Communication.Sockets {
   public class SharedMemorySocket {
 
     public string Id { get => id; set => id = value; }

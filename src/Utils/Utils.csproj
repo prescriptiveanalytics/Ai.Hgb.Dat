@@ -4,8 +4,8 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>DAT.$(MSBuildProjectName)</AssemblyName>
-    <RootNamespace>DAT.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>		
+    <AssemblyName>Ai.Hgb.Dat.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>Ai.Hgb.Dat.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>		
   </PropertyGroup>
 	
 	<PropertyGroup>

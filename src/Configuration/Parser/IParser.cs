@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public interface IParser {
     IConfiguration Parse(string uri);
 

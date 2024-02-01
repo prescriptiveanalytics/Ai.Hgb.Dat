@@ -1,4 +1,4 @@
-﻿using DAT.Configuration;
+﻿using Ai.Hgb.Dat.Configuration;
 using MQTTnet;
 using MQTTnet.Server;
 using MQTTnet.AspNetCore;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 // https://blog.behroozbc.ir/c-mqtt-broker-using-mqttnet-version-4
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   public sealed class MqttBroker : IBroker {
     public HostAddress Address {
       get { return address; }

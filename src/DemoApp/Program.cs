@@ -1,6 +1,6 @@
-﻿using DAT.Communication;
-using DAT.Communication.Sockets;
-using DAT.Configuration;
+﻿using Ai.Hgb.Dat.Communication;
+using Ai.Hgb.Dat.Communication.Sockets;
+using Ai.Hgb.Dat.Configuration;
 using Microsoft.AspNetCore.SignalR;
 using MQTTnet;
 using MQTTnet.Client;
@@ -10,9 +10,9 @@ using System.Net.Sockets;
 using System.Text.Json;
 using System.Text;
 using System.Runtime.InteropServices;
-using DAT.Utils;
+using Ai.Hgb.Dat.Utils;
 
-namespace DAT.DemoApp {
+namespace Ai.Hgb.Dat.DemoApp {
 
   public class Program {
 
@@ -111,8 +111,8 @@ namespace DAT.DemoApp {
       int jobsPerProducer = 10;
       ce = new CountdownEvent(jobsPerProducer);
 
-      var pMonitor = new DAT.Configuration.Monitor<SocketConfiguration>();
-      var cMonitor = new DAT.Configuration.Monitor<SocketConfiguration>();
+      var pMonitor = new Ai.Hgb.Dat.Configuration.Monitor<SocketConfiguration>();
+      var cMonitor = new Ai.Hgb.Dat.Configuration.Monitor<SocketConfiguration>();
       pMonitor.Initialize(@"..\..\..\Configurations\ProducerConfig.yml");
       cMonitor.Initialize(@"..\..\..\Configurations\ConsumerConfig.yml");
 

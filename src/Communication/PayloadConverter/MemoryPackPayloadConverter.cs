@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   public class MemoryPackPayloadConverter : IPayloadConverter {
     public T Deserialize<T>(byte[] payload) {
       return MemoryPackSerializer.Deserialize<T>(payload);

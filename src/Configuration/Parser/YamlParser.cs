@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public class YamlParser : IParser {
 
     private ISerializer ser;

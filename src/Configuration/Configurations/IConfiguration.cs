@@ -1,6 +1,6 @@
-﻿using DAT.Utils;
+﻿using Ai.Hgb.Dat.Utils;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public interface IConfiguration : ICloneable {    
 
     string Type { get; set; }

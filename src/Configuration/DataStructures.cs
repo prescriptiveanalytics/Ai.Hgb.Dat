@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public class HostAddress {
     public HostAddress() { }
 
