@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Utils {
+namespace Ai.Hgb.Dat.Utils {
   public static class Statistics {
     public static int Max(int a, int b) {
       return a > b ? a : b;

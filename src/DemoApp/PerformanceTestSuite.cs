@@ -1,7 +1,7 @@
-﻿using DAT.Communication;
-using DAT.Communication.Sockets;
-using DAT.Configuration;
-using DAT.Utils;
+﻿using Ai.Hgb.Dat.Communication;
+using Ai.Hgb.Dat.Communication.Sockets;
+using Ai.Hgb.Dat.Configuration;
+using Ai.Hgb.Dat.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.DemoApp {
+namespace Ai.Hgb.Dat.DemoApp {
   public class PerformanceTestSuite {
 
     public static void RunSuite() {

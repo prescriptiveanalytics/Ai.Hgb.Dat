@@ -1,6 +1,6 @@
 ﻿using Confluent.Kafka;
-using DAT.Configuration;
-using DAT.Utils;
+using Ai.Hgb.Dat.Configuration;
+using Ai.Hgb.Dat.Utils;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
@@ -9,7 +9,7 @@ using MQTTnet.Protocol;
 using System;
 using System.Net.Mime;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   public class MqttSocket : ISocket {
 
     public SocketConfiguration Configuration {      
@@ -139,7 +139,7 @@ namespace DAT.Communication {
         BlockingActionExecution);
     }
 
-    private void Configuration_ConfigurationChanged(object sender, EventArgs<DAT.Configuration.IConfiguration> e) {      
+    private void Configuration_ConfigurationChanged(object sender, EventArgs<Ai.Hgb.Dat.Configuration.IConfiguration> e) {      
       Console.WriteLine("Udating socket now...");
       var newConfiguration = e.Value as SocketConfiguration;
 

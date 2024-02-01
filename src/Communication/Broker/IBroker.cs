@@ -1,6 +1,6 @@
-﻿using DAT.Configuration;
+﻿using Ai.Hgb.Dat.Configuration;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   public interface IBroker : IDisposable {
     HostAddress Address { get; }
 

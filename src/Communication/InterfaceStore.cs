@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
 
   public enum CommunicationMode {
     Publish,

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Core;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public class Monitor<T> : BackgroundService where T : IConfiguration {
     public T Configuration { get { return configuration; } set { configuration = value; } }
     public IParser Parser { get { return parser; } private set { parser = value; } }
@@ -25,7 +25,7 @@ namespace DAT.Configuration {
     }
 
     public void Initialize(string uri) {
-      parser = DAT.Configuration.Parser.GetParser(uri);      
+      parser = Ai.Hgb.Dat.Configuration.Parser.GetParser(uri);      
       configuration = parser.Parse<T>(uri);
       monitorIntervalMilliseconds = Configuration.MonitorIntervalMilliseconds;
       cts = new CancellationTokenSource();

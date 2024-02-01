@@ -26,7 +26,7 @@ DefaultPublicationOptions:
 DefaultSubscriptionOptions:
   Topic: docs
   QosLevel: ExactlyOnce
-  ContentTypeFullName: DAT.DemoApp.Document
+  ContentTypeFullName: Ai.Hgb.Dat.DemoApp.Document
 
 DefaultRequestOptions:
   Topic: docs

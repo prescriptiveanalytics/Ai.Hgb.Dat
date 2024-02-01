@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Utils {
+namespace Ai.Hgb.Dat.Utils {
 
   public class EventArgs<T> : EventArgs {
     public T Value { get; private set; }

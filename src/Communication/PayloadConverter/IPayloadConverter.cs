@@ -1,4 +1,4 @@
-﻿namespace DAT.Communication {
+﻿namespace Ai.Hgb.Dat.Communication {
   public interface IPayloadConverter {
     byte[] Serialize<T>(T payload);
 

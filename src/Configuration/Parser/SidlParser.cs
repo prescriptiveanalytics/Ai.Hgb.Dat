@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public class SidlParser : IParser {
     public IConfiguration Parse(string uri) {
       throw new NotImplementedException();

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public static class Parser {
 
     private static YamlParser yamlParser = null;

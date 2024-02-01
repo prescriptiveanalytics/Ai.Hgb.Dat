@@ -1,11 +1,11 @@
-﻿using DAT.Configuration;
+﻿using Ai.Hgb.Dat.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   public class PayloadConverter {
     private static Dictionary<PayloadFormat, Type> payloadFormatDict
       = new Dictionary<PayloadFormat, Type>

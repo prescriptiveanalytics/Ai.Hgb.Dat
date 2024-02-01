@@ -1,4 +1,4 @@
-﻿using DAT.Utils;
+﻿using Ai.Hgb.Dat.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace DAT.Configuration {
+namespace Ai.Hgb.Dat.Configuration {
   public class BrokerConfiguration : IConfiguration {
     public string Type { get; set; }
     public string Url { get; set; }

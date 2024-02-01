@@ -1,7 +1,7 @@
-﻿using DAT.Configuration;
-using DAT.Utils;
+﻿using Ai.Hgb.Dat.Configuration;
+using Ai.Hgb.Dat.Utils;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
   /// <summary>
   /// This interface describes the base functionality all socket implementations must provide. 
   /// </summary>

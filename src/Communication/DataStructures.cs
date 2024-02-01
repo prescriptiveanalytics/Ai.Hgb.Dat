@@ -1,9 +1,9 @@
-﻿using DAT.Configuration;
-using DAT.Utils;
+﻿using Ai.Hgb.Dat.Configuration;
+using Ai.Hgb.Dat.Utils;
 using MemoryPack;
 using System.Net.Mime;
 
-namespace DAT.Communication {
+namespace Ai.Hgb.Dat.Communication {
 
   public interface IMessage : ICloneable {
     string ClientId { get; set; }
