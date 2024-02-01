@@ -212,6 +212,8 @@ namespace DAT.Configuration {
       Query = query;
     }
 
+    // TODO: add ports
+
     public object Clone() {
       return new Edge(Id, Source, Sink, Query);
     }
@@ -228,20 +230,30 @@ namespace DAT.Configuration {
 
     public string FullyQualifiedTypename { get; set; }
 
+    public List<Port> Ports { get; set; }
+
     public Node() { }
 
-    public Node(string id, string typename, string fullyQualifiedTypename) { 
+    public Node(string id, string typename, string fullyQualifiedTypename, List<Port> ports) { 
       Id = id;
       Typename = typename;
       FullyQualifiedTypename = fullyQualifiedTypename;
+      Ports = ports;
     }
 
     public object Clone() {
-      return new Node(Id, Typename, FullyQualifiedTypename);
+      return new Node(Id, Typename, FullyQualifiedTypename, Ports);
     }
 
     public string GetRoutingString(string delimiter) {
       return $"{Typename}{delimiter}{Id}";
     }
+  }
+
+  public struct Port {
+    public string Id { get; set; }
+    public string Type { get; set; } // in/out
+
+    public Port() { }
   }
 }
