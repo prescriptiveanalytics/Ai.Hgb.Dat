@@ -25,5 +25,9 @@
 		<ProjectReference Include="..\Configuration\Configuration.csproj" PrivateAssets="All" />
 		<ProjectReference Include="..\Utils\Utils.csproj" PrivateAssets="All" />
   </ItemGroup>
+	
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.7.48-alpha" />
+  </ItemGroup>
 
 </Project>
