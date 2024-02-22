@@ -339,7 +339,7 @@ namespace Ai.Hgb.Dat.DemoApp {
 
       HostAddress address = new HostAddress("127.0.0.1", 1883);
       MqttBroker broker = new MqttBroker(address);
-      broker.StartUpWebsocket();
+      broker.StartUp();
       Task.Delay(1000).Wait();
 
       string pubsubTopic = "demoapp/performance/mqtt/pubsubtest";

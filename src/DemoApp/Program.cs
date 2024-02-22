@@ -338,7 +338,7 @@ namespace Ai.Hgb.Dat.DemoApp {
 
       MqttBroker broker = new MqttBroker(address);
       //broker.StartUp();
-      broker.StartUpWebsocket();
+      broker.StartUp();
 
       string pubsubTopic = "demoapp/docs";
       string respTopic = "demoapp/responses";
@@ -407,7 +407,7 @@ namespace Ai.Hgb.Dat.DemoApp {
 
       MqttBroker broker = new MqttBroker(address);
       //broker.StartUp();
-      broker.StartUpWebsocket();
+      broker.StartUp();
 
       ISocket socket = new MqttSocket("socket1", "socket1", address, converter, connect: true);
       string group = Guid.NewGuid().ToString();
