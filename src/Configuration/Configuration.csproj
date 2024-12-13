@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ai.Hgb.Common.Entities" Version="0.1.7-prerelease-g133b5bc496" />
+    <PackageReference Include="Ai.Hgb.Common.Entities" Version="0.1.9-prerelease-ga62c160758" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
     <PackageReference Include="YamlDotNet" Version="13.1.1" />
   </ItemGroup>
