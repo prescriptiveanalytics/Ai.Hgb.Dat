@@ -62,7 +62,11 @@ namespace Ai.Hgb.Dat.Communication {
 
     Task PublishAsync<T>(string topic, T payload);
 
+    Task PublishAsync<T>(string topic, IMessage msg);
+
     Task PublishAsync<T>(PublicationOptions options, T payload);
+
+    Task PublishAsync(PublicationOptions options, IMessage msg);
 
     T Request<T>();
 

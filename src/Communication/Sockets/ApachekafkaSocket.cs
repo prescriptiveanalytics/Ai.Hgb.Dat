@@ -521,6 +521,14 @@ namespace Ai.Hgb.Dat.Communication {
       throw new NotImplementedException();
     }
 
+    public Task PublishAsync<T>(string topic, IMessage msg) {
+      throw new NotImplementedException();
+    }
+
+    public Task PublishAsync(PublicationOptions options, IMessage msg) {
+      throw new NotImplementedException();
+    }
+
     #endregion helper
   }
 }

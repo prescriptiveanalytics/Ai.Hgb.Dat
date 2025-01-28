@@ -1,13 +1,9 @@
-﻿using Confluent.Kafka;
-using Ai.Hgb.Dat.Configuration;
+﻿using Ai.Hgb.Dat.Configuration;
 using Ai.Hgb.Dat.Utils;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
-using MQTTnet.Internal;
 using MQTTnet.Protocol;
-using System;
-using System.Net.Mime;
 
 namespace Ai.Hgb.Dat.Communication {
   public class MqttSocket : ISocket {
@@ -55,7 +51,8 @@ namespace Ai.Hgb.Dat.Communication {
 
     private Dictionary<SubscriptionOptions, List<ActionItem>> actions;
     private Dictionary<RequestOptions, TaskCompletionSource<IMessage>> promises;
-    
+
+    #region setup
 
     public MqttSocket(SocketConfiguration configuration) {
       this.configuration = configuration;
@@ -130,7 +127,6 @@ namespace Ai.Hgb.Dat.Communication {
       if (connect) Connect();
     }
 
-
     public object Clone() {
       return new MqttSocket(Configuration.Id, Configuration.Name, Configuration.Broker, Converter,
         (SubscriptionOptions)Configuration.DefaultSubscriptionOptions?.Clone(),
@@ -138,6 +134,63 @@ namespace Ai.Hgb.Dat.Communication {
         (RequestOptions)Configuration.DefaultRequestOptions?.Clone(),
         BlockingActionExecution);
     }
+
+    public ISocket Connect() {
+      if (IsConnected()) return this;
+
+      var options = new MqttClientOptionsBuilder()
+        .WithClientId(Configuration.Name)
+        .WithWebSocketServer("ws://127.0.0.1:5000/mqtt")
+        .WithTcpServer(configuration.Broker.Name, configuration.Broker.Port)
+        .WithCleanSession(true);
+      var mgOptions = new ManagedMqttClientOptionsBuilder()
+        .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
+        .WithClientOptions(options.Build())
+        .Build();
+
+      client.StartAsync(mgOptions).Wait(cts.Token);
+      client.ConnectingFailedAsync += OnClient_ConnectingFailedAsync;
+      connected.WaitOne();
+
+      if (configuration.DefaultSubscriptionOptions != null && configuration.DefaultSubscriptionOptions.Topic != null)
+        client.SubscribeAsync(configuration.DefaultSubscriptionOptions.Topic, GetQosLevel(configuration.DefaultSubscriptionOptions.QosLevel)).Wait(cts.Token);
+
+      foreach (var subscription in pendingSubscriptions) {
+        client.SubscribeAsync(subscription.Topic, GetQosLevel(subscription.QosLevel)).Wait(cts.Token);
+      }
+      pendingSubscriptions.Clear();
+
+      return this;
+    }
+
+    public ISocket Disconnect() {
+      client.StopAsync().Wait(cts.Token);
+      cts.Cancel();
+      disconnected.WaitOne();
+      client.Dispose();
+      client = null;
+
+      return this;
+    }
+
+    public void Abort() {
+      cts.Cancel();
+      client.StopAsync();
+      client.Dispose();
+      client = null;
+    }
+
+    public void Dispose() {
+      Disconnect();
+    }
+
+    public bool IsConnected() {
+      return client != null && client.IsConnected;
+    }
+
+    #endregion setup
+
+    #region event handling
 
     private void Configuration_ConfigurationChanged(object sender, EventArgs<Ai.Hgb.Dat.Configuration.IConfiguration> e) {      
       Console.WriteLine("Udating socket now...");
@@ -297,63 +350,14 @@ namespace Ai.Hgb.Dat.Communication {
       if (handler != null) handler(this, new EventArgs<IMessage>(message));
     }
 
-    public ISocket Connect() {
-      if (IsConnected()) return this;
-
-      var options = new MqttClientOptionsBuilder()
-        .WithClientId(Configuration.Name)
-        .WithWebSocketServer("ws://127.0.0.1:5000/mqtt")         
-        .WithTcpServer(configuration.Broker.Name, configuration.Broker.Port)
-        .WithCleanSession(true);
-      var mgOptions = new ManagedMqttClientOptionsBuilder()
-        .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
-        .WithClientOptions(options.Build())
-        .Build();
-
-      client.StartAsync(mgOptions).Wait(cts.Token);
-      client.ConnectingFailedAsync += OnClient_ConnectingFailedAsync;
-      connected.WaitOne();
-
-      if (configuration.DefaultSubscriptionOptions != null && configuration.DefaultSubscriptionOptions.Topic != null)
-        client.SubscribeAsync(configuration.DefaultSubscriptionOptions.Topic, GetQosLevel(configuration.DefaultSubscriptionOptions.QosLevel)).Wait(cts.Token);
-
-      foreach (var subscription in pendingSubscriptions) {
-        client.SubscribeAsync(subscription.Topic, GetQosLevel(subscription.QosLevel)).Wait(cts.Token);
-      }
-      pendingSubscriptions.Clear();
-
-      return this;
-    }
-
     private Task OnClient_ConnectingFailedAsync(ConnectingFailedEventArgs arg) {
       Console.WriteLine(arg.Exception.InnerException.ToString());
       return Task.CompletedTask;
     }
 
-    public ISocket Disconnect() {
-      client.StopAsync().Wait(cts.Token);
-      cts.Cancel();      
-      disconnected.WaitOne();
-      client.Dispose();
-      client = null;
+    #endregion event handling
 
-      return this;
-    }
-
-    public void Abort() {
-      cts.Cancel();
-      client.StopAsync();
-      client.Dispose();
-      client = null;
-    }
-
-    public void Dispose() {
-      Disconnect();
-    }
-
-    public bool IsConnected() {
-      return client != null && client.IsConnected;
-    }
+    #region subscribe
 
     private void Subscribe(SubscriptionOptions options) {
       var o = options != null ? options : configuration.DefaultSubscriptionOptions;
@@ -439,6 +443,9 @@ namespace Ai.Hgb.Dat.Communication {
       }
     }
 
+    #endregion subscribe
+
+    #region publish
     public void Publish<T>(T payload) {
       var o = (PublicationOptions)configuration.DefaultPublicationOptions.Clone();      
       Publish(o, payload);
@@ -466,6 +473,12 @@ namespace Ai.Hgb.Dat.Communication {
       await PublishAsync(o, payload);
     }
 
+    public async Task PublishAsync<T>(string topic, IMessage msg) {
+      var o = (PublicationOptions)configuration.DefaultPublicationOptions.Clone();
+      o.Topic = topic;
+      await PublishAsync(o, msg);
+    }
+
     public async Task PublishAsync<T>(PublicationOptions options, T payload) {
       var o = options != null ? options : configuration.DefaultPublicationOptions;
 
@@ -486,6 +499,28 @@ namespace Ai.Hgb.Dat.Communication {
 
       await client.EnqueueAsync(mappMessage);
     }
+
+    public async Task PublishAsync(PublicationOptions options, IMessage msg) {
+      var o = options != null ? options : configuration.DefaultPublicationOptions;
+
+      msg.Topic = o.Topic; // use old msg, update topic only
+
+      var appMessage = new MqttApplicationMessageBuilder()
+        .WithTopic(msg.Topic)        
+        .WithPayload(converter.Serialize(msg))
+        .WithQualityOfServiceLevel(GetQosLevel(o.QosLevel))
+        .Build();
+
+      var mappMessage = new ManagedMqttApplicationMessageBuilder()
+        .WithApplicationMessage(appMessage)
+        .Build();
+
+      await client.EnqueueAsync(mappMessage);
+    }
+
+    #endregion publish
+
+    #region request
 
     public T Request<T>() {
       var o = (RequestOptions)configuration.DefaultRequestOptions.Clone();
@@ -582,6 +617,8 @@ namespace Ai.Hgb.Dat.Communication {
       string contentType = payload != null ? typeof(T2).FullName : "";
       //IMessage msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, payload);
       var msg = new Message<T2>(Configuration.Id, Configuration.Name, o.Topic, o.ResponseTopic, contentType, converter.Serialize<T2>(payload), payload);
+      msg.ResponseCount = o.ResponseCount;
+      msg.BulkResponse = o.BulkResponse;
       var serMsg = converter.Serialize(msg);
 
       appMessageBuilder = msg != null
@@ -605,6 +642,8 @@ namespace Ai.Hgb.Dat.Communication {
       // deserialize and return response
       return converter.Deserialize<T1>(response.Payload);
     }
+
+    #endregion request
 
     #region helper
 

@@ -113,6 +113,9 @@ namespace Ai.Hgb.Dat.Configuration {
 
     public string ContentTypeFullName { get; set; }
 
+    public int ResponseCount { get; set; }
+    public bool BulkResponse { get; set; }
+
     public RequestOptions() {
       Topic = null;
       ResponseTopic = null;
@@ -121,16 +124,18 @@ namespace Ai.Hgb.Dat.Configuration {
       ContentTypeFullName = "";
     }
 
-    public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix = true, Type contentType = null, string contentTypeFullName = "") {
+    public RequestOptions(string topic, string responseTopic, bool generateResponseTopicPostfix = true, Type contentType = null, string contentTypeFullName = "", int responseCount = 1, bool bulkResponse = false) {
       Topic = topic;
       ResponseTopic = responseTopic;
       GenerateResponseTopicPostfix = generateResponseTopicPostfix;
       ContentType = contentType;
       ContentTypeFullName = contentTypeFullName;
+      ResponseCount = responseCount;
+      BulkResponse = bulkResponse;
     }
 
     public object Clone() {
-      return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix, ContentType, ContentTypeFullName);
+      return new RequestOptions(Topic, ResponseTopic, GenerateResponseTopicPostfix, ContentType, ContentTypeFullName, ResponseCount, BulkResponse);
     }
 
     public SubscriptionOptions GetRequestSubscriptionOptions() {

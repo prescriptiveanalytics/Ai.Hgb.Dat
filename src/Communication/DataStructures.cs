@@ -14,7 +14,9 @@ namespace Ai.Hgb.Dat.Communication {
     byte[] Payload { get; set; }
 
     QualityOfServiceLevel QOS { get; set;}
-    long Timestamp { get; set; }  
+    long Timestamp { get; set; }
+    int ResponseCount { get; set; }
+    bool BulkResponse { get; set; }
 
 
     object Content { get; set; }
@@ -31,6 +33,8 @@ namespace Ai.Hgb.Dat.Communication {
     public object Content { get; set; }
     public QualityOfServiceLevel QOS { get; set; }
     public long Timestamp { get; set; }
+    public int ResponseCount { get; set; }
+    public bool BulkResponse { get; set; }
 
 
     public Message() { }
@@ -56,8 +60,21 @@ namespace Ai.Hgb.Dat.Communication {
       Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     }
 
+    public Message(string clientId, string clientName, string topic, string responseTopic, string contentType, byte[] payload, QualityOfServiceLevel qos = QualityOfServiceLevel.ExactlyOnce, int responseCount = 1, bool bulkResponse = false) {
+      ClientId = clientId;
+      ClientName = clientName;
+      Topic = topic;
+      ResponseTopic = responseTopic;
+      ContentType = contentType;
+      Payload = payload != null ? payload.ToArray() : payload;
+      QOS = qos;
+      Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+      ResponseCount = responseCount;
+      BulkResponse = bulkResponse;
+    }
+
     public object Clone() {
-      return new Message(ClientId, ClientName, Topic, ResponseTopic, ContentType, Payload, QOS);
+      return new Message(ClientId, ClientName, Topic, ResponseTopic, ContentType, Payload, QOS, ResponseCount, BulkResponse);
     }
   }
 
@@ -80,8 +97,13 @@ namespace Ai.Hgb.Dat.Communication {
       Content = content;
     }
 
+    //public Message(string clientId, string clientName, string topic, string responseTopic, string contentType, byte[] payload, T content, QualityOfServiceLevel qos = QualityOfServiceLevel.ExactlyOnce, int responseCount = 1, bool bulkResponse = false)
+    //  : base(clientId, clientName, topic, responseTopic, contentType, payload, qos) {
+    //  Content = content;
+    //}
+
     public new object Clone() {
-      return new Message<T>(ClientId, ClientName, Topic, ResponseTopic, ContentType, Payload, Content);
+      return new Message<T>(ClientId, ClientName, Topic, ResponseTopic, ContentType, Payload, Content, QOS);      
     }
   }
 
