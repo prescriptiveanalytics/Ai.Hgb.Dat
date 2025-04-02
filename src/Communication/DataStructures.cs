@@ -2,9 +2,14 @@
 using Ai.Hgb.Dat.Utils;
 using MemoryPack;
 using System.Net.Mime;
+using System.Xml.Serialization;
+using VYaml.Annotations;
+using YamlDotNet.Serialization;
 
 namespace Ai.Hgb.Dat.Communication {
 
+  //[VYaml.Annotations.YamlObject]
+  //[VYaml.Annotations.YamlObjectUnion("Imsg", typeof(Message))]
   public interface IMessage : ICloneable {
     string ClientId { get; set; }
     public string ClientName { get; set; }
@@ -22,6 +27,7 @@ namespace Ai.Hgb.Dat.Communication {
     object Content { get; set; }
   }
 
+  //[VYaml.Annotations.YamlObject]
   public class Message : IMessage {
 
     public string ClientId { get; set; }
@@ -30,12 +36,16 @@ namespace Ai.Hgb.Dat.Communication {
     public byte[] Payload { get; set; }
     public string Topic { get; set; }
     public string ResponseTopic { get; set; }
+
+    //[VYaml.Annotations.YamlIgnore]
+    [YamlDotNet.Serialization.YamlIgnore]
+    [XmlIgnore]
     public object Content { get; set; }
+
     public QualityOfServiceLevel QOS { get; set; }
     public long Timestamp { get; set; }
     public int ResponseCount { get; set; }
     public bool BulkResponse { get; set; }
-
 
     public Message() { }
 
@@ -78,12 +88,14 @@ namespace Ai.Hgb.Dat.Communication {
     }
   }
 
-  //[MemoryPackable]
-  public class Message<T> : Message {
-
+  //[VYaml.Annotations.YamlObject]
+  [MemoryPackable]
+  public partial class Message<T> : Message { // added partial
+    
     public new T Content { get; set; }
 
-    //[MemoryPackConstructor]
+    //[VYaml.Annotations.YamlConstructor]
+    [MemoryPackConstructor]
     public Message() { }
 
     public Message(Message msg) : base(msg) { }

@@ -57,7 +57,7 @@ namespace Ai.Hgb.Dat.Communication {
      *   output DocumentMessage document
      * }
     */
-    public string GenerateSidlText() {
+    public string GenerateDescription() {
       var sb = new StringBuilder();
 
       // types

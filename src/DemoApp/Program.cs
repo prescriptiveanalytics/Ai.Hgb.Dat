@@ -34,12 +34,12 @@ namespace Ai.Hgb.Dat.DemoApp {
       //RunDemo_RegisterTypes();
       //RunDemo_MQTTandWS_StreamDoubleData();
 
-      PerformanceTestSuite.RunIndividualTests();
       //PerformanceTestSuite.RunSuite();
+      PerformanceTestSuite.RunIndividualTests();
 
 
       sw.Stop();
-      //Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
+      Console.WriteLine($"\n\nTime elapsed: {sw.Elapsed.TotalMilliseconds / 1000.0:f4} seconds");
       Console.WriteLine();
     }
 
@@ -390,7 +390,7 @@ namespace Ai.Hgb.Dat.DemoApp {
       // register types
       producer.InterfaceStore.Register<ComplexDocument>("demo/docs", CommunicationMode.Publish);
       Console.WriteLine("\n\nRegistered Types: \n\n");
-      Console.WriteLine(producer.InterfaceStore.GenerateSidlText());
+      Console.WriteLine(producer.InterfaceStore.GenerateDescription());
       Console.WriteLine("\n\n");
 
     }

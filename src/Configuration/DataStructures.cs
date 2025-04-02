@@ -30,15 +30,15 @@ namespace Ai.Hgb.Dat.Configuration {
 
   public enum PayloadFormat {
     JSON,
-    TOML,
-    YAML,
-    PROTOBUF,
-    SIDL
+    XML,
+    YAML,    
+    SEIDL
   }
 
   public enum SocketType {
     MQTT,
-    APACHEKAFKA
+    APACHEKAFKA,
+    SMEM
   }
 
   public enum QualityOfServiceLevel {

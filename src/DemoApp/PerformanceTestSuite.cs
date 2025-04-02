@@ -13,60 +13,64 @@ namespace Ai.Hgb.Dat.DemoApp {
   public class PerformanceTestSuite {
 
     public static void RunSuite() {
-      string path = @"C:\Users\P41608\Desktop\ism_experiments\results.csv";
+      string path = @"..\..\..\..\results.csv";
       IPayloadConverter converter;
 
-      int repetitions = 10;
-      var runCounts = new List<int>() { 1, 10, 100, 1000, 10000, 100000 }; // 1, 10, 100, 1000, 10000, 100000, 1000000
+      int repetitions = 10; // 10
+      var runCounts = new List<int>() { 1, 10, 100, 1000, 2000, 10000, 100000 }; // 1, 10, 100, 1000, 2000, 10000, 100000
       var arrayLengths = new List<int>() { 1000 }; // 1, 10, 100, 1000, 10000, 100000, 1000000
+      var converters = new List<string>() { "xml", "json", "memp" }; // "yaml", "xml", "json", "memp"
+      
       var experiments = new List<Experiment>();
-      //converter = new JsonPayloadConverter();
-      converter = new MemoryPackPayloadConverter();
-      int expCount = 0;
+      int expCount = 0;      
 
       Console.WriteLine("Run Performance Experiments:\n");
       for (int i = 0; i < arrayLengths.Count; i++) {
         for(int j = 0; j < runCounts.Count; j++) {
+          for(int k = 0; k < converters.Count; k++) {
+            converter = converters[k] switch { "xml" => new XmlPayloadConverter(), "yaml" => new YamlPayloadConverter(), "json" => new JsonPayloadConverter(), "memp" => new MemoryPackPayloadConverter(), _ => throw new NotImplementedException() };
 
-          Console.WriteLine("mqtt-pubsub");
-          var expMqttPubsub = RunTest_MQTTSocket_PublishSubscribe(repetitions, runCounts[j], arrayLengths[i], converter);
-          expMqttPubsub.Nr = ++expCount;
-          Console.WriteLine(expMqttPubsub);
-          Task.Delay(1000).Wait();
+            Console.WriteLine("mqtt-pubsub");
+            var expMqttPubsub = RunTest_MQTTSocket_PublishSubscribeNew(repetitions, runCounts[j], arrayLengths[i], converter, converters[k]);
+            expMqttPubsub.Nr = ++expCount;
+            Console.WriteLine(expMqttPubsub);
+            Task.Delay(1000).Wait();
 
-          Console.WriteLine("smem-pubsub");
-          var expShamPubsub = RunTest_SharedMemorySocket_PublishSubscribe(repetitions, runCounts[j], arrayLengths[i], converter);
-          expShamPubsub.Nr = ++expCount;
-          Console.WriteLine(expShamPubsub);
-          Task.Delay(1000).Wait();
+            Console.WriteLine("smem-pubsub");
+            var expShamPubsub = RunTest_SharedMemorySocket_PublishSubscribe(repetitions, runCounts[j], arrayLengths[i], converter, converters[k]);
+            expShamPubsub.Nr = ++expCount;
+            Console.WriteLine(expShamPubsub);
+            Task.Delay(1000).Wait();
 
-          Console.WriteLine("mqtt-reqres");
-          var expMqttReqres = RunTest_MQTTSocket_RequestResponse(repetitions, runCounts[j], arrayLengths[i], converter);
-          expMqttReqres.Nr = ++expCount;
-          Console.WriteLine(expMqttReqres);
-          Task.Delay(1000).Wait();
+            Console.WriteLine("mqtt-reqres");
+            var expMqttReqres = RunTest_MQTTSocket_RequestResponse(repetitions, runCounts[j], arrayLengths[i], converter, converters[k]);
+            expMqttReqres.Nr = ++expCount;
+            Console.WriteLine(expMqttReqres);
+            Task.Delay(1000).Wait();
 
-          Console.WriteLine("smem-reqres");
-          var expShamReqres = RunTest_SharedMemorySocket_RequestResponse(repetitions, runCounts[j], arrayLengths[i], converter);
-          expShamReqres.Nr = ++expCount;
-          Console.WriteLine(expShamReqres);
-          Task.Delay(1000).Wait();
+            Console.WriteLine("smem-reqres");
+            var expShamReqres = RunTest_SharedMemorySocket_RequestResponse(repetitions, runCounts[j], arrayLengths[i], converter, converters[k]);            
+            expShamReqres.Nr = ++expCount;
+            Console.WriteLine(expShamReqres);
+            Task.Delay(1000).Wait();
 
-          if (i == 0 && j == 0) {
-            //Console.WriteLine(expShamReqres.GetTitleline());
-            using (var sw = new StreamWriter(path, false)) sw.WriteLine(expShamReqres.GetCSVTitleline());
-          }
+            if (i == 0 && j == 0 && k == 0) {
+              //Console.WriteLine(expShamReqres.GetTitleline());
+              using (var sw = new StreamWriter(path, false)) sw.WriteLine(expShamReqres.GetCSVTitleline());
+            }
 
-          experiments.Add(expMqttPubsub);
-          experiments.Add(expShamPubsub);
-          experiments.Add(expMqttReqres);
-          experiments.Add(expShamReqres);
+            experiments.Add(expMqttPubsub);
+            experiments.Add(expShamPubsub);
+            experiments.Add(expMqttReqres);
+            experiments.Add(expShamReqres);
 
-          using (var sw = new StreamWriter(path, true)) {
-            sw.WriteLine(expMqttPubsub.ToCSVString());
-            sw.WriteLine(expShamPubsub.ToCSVString());
-            sw.WriteLine(expMqttReqres.ToCSVString());
-            sw.WriteLine(expShamReqres.ToCSVString());
+            using (var sw = new StreamWriter(path, true)) {
+              sw.WriteLine(expMqttPubsub.ToCSVString());
+              sw.WriteLine(expShamPubsub.ToCSVString());
+              sw.WriteLine(expMqttReqres.ToCSVString());
+              sw.WriteLine(expShamReqres.ToCSVString());
+            }
+
           }
         }
       }
@@ -102,36 +106,49 @@ namespace Ai.Hgb.Dat.DemoApp {
       // Test 3
       //converter = new MemoryPackPayloadConverter();
       //converter = new JsonPayloadConverter();
-      //var exp1 = RunTest_MQTTSocket_RequestResponse(runCount, arrayLength, converter);
+      //converter = new YamlPayloadConverter();
+      //var exp1 = RunTest_MQTTSocket_RequestResponse(1, runCount, arrayLength, converter, "yaml");
       //Console.WriteLine(exp1.GetTitleline());
       //Console.WriteLine(exp1);
 
       // Test 4
-      converter = new JsonPayloadConverter();
+      //converter = new JsonPayloadConverter();
       //converter = new MemoryPackPayloadConverter();
-      var exp1 = RunTest_MQTTSocket_PublishSubscribe(1, runCount, arrayLength, converter);
+      //converter = new YamlPayloadConverter();
+      converter = new XmlPayloadConverter();
+      var exp1 = RunTest_MQTTSocket_PublishSubscribe(1, runCount, arrayLength, converter, "json");
       Console.WriteLine(exp1.GetTitleline());
       Console.WriteLine(exp1);
 
       // Test 5
       //converter = new JsonPayloadConverter();
-      //var exp1 = RunTest_SharedMemorySocket_PublishSubscribe(1, runCount, arrayLength, converter);
+      //converter = new MemoryPackPayloadConverter();
+      //converter = new YamlPayloadConverter();
+      //var exp1 = RunTest_SharedMemorySocket_PublishSubscribe(1, runCount, arrayLength, converter, "memp");
+      //Console.WriteLine(exp1.GetTitleline());
+      //Console.WriteLine(exp1);
+
+      // Test 6
+      //converter = new JsonPayloadConverter();
+      ////converter = new MemoryPackPayloadConverter();
+      ////converter = new YamlPayloadConverter();
+      //var exp1 = RunTest_SharedMemorySocket_RequestResponse(1, runCount, arrayLength, converter, "memp");
       //Console.WriteLine(exp1.GetTitleline());
       //Console.WriteLine(exp1);
     }
 
     #region SharedMemory request-response
-    public static Experiment RunTest_SharedMemorySocket_RequestResponse(int repetitions, int runCount, int arrayLength, IPayloadConverter converter) {
+    public static Experiment RunTest_SharedMemorySocket_RequestResponse(int repetitions, int runCount, int arrayLength, IPayloadConverter converter, string converterName) {
       var payload = new DoubleTypedArray(arrayLength);
       for (int a = 0; a < payload.Value.Length; a++) payload.Value[a] = 0.1;
       int payloadSize = converter.Serialize(payload).Length;
 
       var results = new List<double>();
-      for (int i = 0; i < repetitions; i++) {
-        results.Add(RunTest_MQTTSocket_PublishSubscribe(runCount, converter, payload));
+      for (int i = 0; i < repetitions; i++) {        
+        results.Add(RunTest_SharedMemorySocket_RequestResponse(runCount, converter, payload)); // TODO
       }
 
-      return new Experiment(0, "Shared Memory req/res", "smem", "reqres", "json", payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
+      return new Experiment(0, "Shared Memory req/res", "smem", "req/res", converterName, payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
     }
 
     public static double RunTest_SharedMemorySocket_RequestResponse(int runCount, IPayloadConverter converter, DoubleTypedArray payload) {
@@ -173,7 +190,7 @@ namespace Ai.Hgb.Dat.DemoApp {
     #endregion SharedMemory request-response
 
     #region SharedMemory publish-subscribe
-    public static Experiment RunTest_SharedMemorySocket_PublishSubscribe(int repetitions, int runCount, int arrayLength, IPayloadConverter converter) {
+    public static Experiment RunTest_SharedMemorySocket_PublishSubscribe(int repetitions, int runCount, int arrayLength, IPayloadConverter converter, string converterName) {
       var payload = new DoubleTypedArray(arrayLength);
       for (int a = 0; a < payload.Value.Length; a++) payload.Value[a] = 0.1;
       int payloadSize = converter.Serialize(payload).Length;
@@ -183,7 +200,7 @@ namespace Ai.Hgb.Dat.DemoApp {
         results.Add(RunTest_SharedMemorySocket_PublishSubscribe(runCount, converter, payload));
       }
 
-      return new Experiment(0, "Shared Memory pub/sub", "smem", "pub/sub", "json", payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
+      return new Experiment(0, "Shared Memory pub/sub", "smem", "pub/sub", converterName, payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
     }
 
     public static double RunTest_SharedMemorySocket_PublishSubscribe(int runCount, IPayloadConverter converter, DoubleTypedArray payload) {
@@ -228,7 +245,7 @@ namespace Ai.Hgb.Dat.DemoApp {
 
     #region MQTT request-response
 
-    public static Experiment RunTest_MQTTSocket_RequestResponse(int repetitions, int runCount, int arrayLength, IPayloadConverter converter) {
+    public static Experiment RunTest_MQTTSocket_RequestResponse(int repetitions, int runCount, int arrayLength, IPayloadConverter converter, string converterName) {
       var payload = new DoubleTypedArray(arrayLength);
       for (int a = 0; a < payload.Value.Length; a++) payload.Value[a] = 0.1;
       int payloadSize = converter.Serialize(payload).Length;
@@ -238,7 +255,7 @@ namespace Ai.Hgb.Dat.DemoApp {
         results.Add(RunTest_MQTTSocket_RequestResponse(runCount, converter, payload));
       }
 
-      return new Experiment(0, "MQTT req/res", "mqtt", "reqres", "json", payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
+      return new Experiment(0, "MQTT req/res", "mqtt", "req/res", converterName, payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
     }
 
     public static double RunTest_MQTTSocket_RequestResponse(int runCount, IPayloadConverter converter, DoubleTypedArray payload) {
@@ -246,7 +263,9 @@ namespace Ai.Hgb.Dat.DemoApp {
 
       HostAddress address = new HostAddress("127.0.0.1", 1883);
 
-      IBroker broker = new MqttBroker(address);
+      MqttBroker broker = new MqttBroker(address);
+      broker.WebsocketEnabled = false;
+      broker.InterceptorsEnabled = false;
       broker.StartUp();
       Task.Delay(1000).Wait(); ;
 
@@ -319,7 +338,7 @@ namespace Ai.Hgb.Dat.DemoApp {
     #region MQTT publish-subscribe
 
     static CountdownEvent ce;
-    public static Experiment RunTest_MQTTSocket_PublishSubscribe(int repetitions, int runCount, int arrayLength, IPayloadConverter converter) {
+    public static Experiment RunTest_MQTTSocket_PublishSubscribe(int repetitions, int runCount, int arrayLength, IPayloadConverter converter, string converterName) {
       // prepare payload
       var payload = new DoubleTypedArray(arrayLength);
       for (int a = 0; a < payload.Value.Length; a++) payload.Value[a] = 0.1;
@@ -330,7 +349,7 @@ namespace Ai.Hgb.Dat.DemoApp {
         results.Add(RunTest_MQTTSocket_PublishSubscribe(runCount, converter, payload));
       }
 
-      return new Experiment(0, "MQTT pub/sub", "mqtt", "pub/sub", "json", payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
+      return new Experiment(0, "MQTT pub/sub", "mqtt", "pub/sub", converterName, payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
     }
 
     public static double RunTest_MQTTSocket_PublishSubscribe(int runCount, IPayloadConverter converter, DoubleTypedArray payload) {
@@ -339,6 +358,8 @@ namespace Ai.Hgb.Dat.DemoApp {
 
       HostAddress address = new HostAddress("127.0.0.1", 1883);
       MqttBroker broker = new MqttBroker(address);
+      broker.WebsocketEnabled = false;
+      broker.InterceptorsEnabled = false;
       broker.StartUp();
       Task.Delay(1000).Wait();
 
@@ -380,6 +401,15 @@ namespace Ai.Hgb.Dat.DemoApp {
       for(int i = 0; i < runCount; i++) {
         socket.Publish(payload);
       }
+      //Console.WriteLine("completed producing: " + ce.CurrentCount);
+      //Task.Delay(1000).Wait();
+      //Console.WriteLine("Current count: " + ce.CurrentCount);
+      //Task.Delay(1000).Wait();
+      //Console.WriteLine("Current count: " + ce.CurrentCount);
+      //Task.Delay(1000).Wait();
+      //Console.WriteLine("Current count: " + ce.CurrentCount);
+      //Task.Delay(1000).Wait();
+      //Console.WriteLine("Current count: " + ce.CurrentCount);
     }
 
     private static void ConsumeData(IMessage msg, CancellationToken token) {
@@ -388,6 +418,83 @@ namespace Ai.Hgb.Dat.DemoApp {
     }
 
     #endregion MQTT publish-subscribe
+
+    #region MQTT publish-subscribe new
+
+    static CountdownEvent cde;
+    public static Experiment RunTest_MQTTSocket_PublishSubscribeNew(int repetitions, int runCount, int arrayLength, IPayloadConverter converter, string converterName) {
+      // prepare payload
+      var payload = new DoubleTypedArray(arrayLength);
+      for (int a = 0; a < payload.Value.Length; a++) payload.Value[a] = 0.1;
+      int payloadSize = converter.Serialize(payload).Length;
+
+      var results = new List<double>();
+      for (int i = 0; i < repetitions; i++) {
+        results.Add(RunTest_MQTTSocket_PublishSubscribeNew(runCount, converter, payload));
+      }
+
+      return new Experiment(0, "MQTT pub/sub", "mqtt", "pub/sub", converterName, payloadSize, runCount, repetitions, results.Sum(), results.Average(), results.Median(), results.Min(), results.Max(), results.StandardDeviation());
+    }
+
+    public static double RunTest_MQTTSocket_PublishSubscribeNew(int runCount, IPayloadConverter converter, DoubleTypedArray payload) {
+      var cts = new CancellationTokenSource();
+      cde = new CountdownEvent(runCount);
+
+      HostAddress address = new HostAddress("127.0.0.1", 1883);
+      MqttBroker broker = new MqttBroker(address);
+      broker.WebsocketEnabled = false;
+      broker.InterceptorsEnabled = false;
+      broker.StartUp();
+      Task.Delay(1000).Wait();
+
+      string pubsubTopic = "demoapp/performance/mqtt/pubsubtest/" + Utils.Misc.GenerateId(10);
+      var pubOptions = new PublicationOptions(pubsubTopic, pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
+      var subOptions = new SubscriptionOptions(pubsubTopic, QualityOfServiceLevel.ExactlyOnce);
+
+      ISocket producer, consumer;
+      producer = new MqttSocket("p1", "producer", address, converter, defPubOptions: pubOptions, connect: true);
+      consumer = new MqttSocket("c1", "consumer", address, converter, defSubOptions: subOptions, connect: true);
+      Task.Run(() => consumer.Subscribe<DoubleTypedArray>(ConsumeDataNew, cts.Token));
+      Task.Delay(100).Wait();
+
+      Console.WriteLine("Waiting for completion...");
+      Stopwatch sw = new Stopwatch();
+      sw.Start();
+      // BEGIN OF EXPERIMENT
+
+      Task.Run(() => ProduceDataNew(producer, runCount + (int)Math.Floor(runCount*0.5), payload));
+
+      // wait for completion
+      cde.Wait();
+
+      // END OF EXPERIMENT
+      sw.Stop();
+      Console.WriteLine("Completed");
+
+      producer.Disconnect();
+      consumer.Disconnect();
+      Task.Delay(100).Wait();
+      broker.TearDown();
+      Task.Delay(1000).Wait();
+
+      Console.WriteLine("Returning");
+      return sw.Elapsed.TotalMilliseconds;
+    }
+
+    private static void ProduceDataNew(ISocket socket, int runCount, DoubleTypedArray payload) {
+      for (int i = 0; i < runCount; i++) {
+        socket.Publish(payload);
+      }
+    }
+
+    private static void ConsumeDataNew(IMessage msg, CancellationToken token) {
+      var data = (DoubleTypedArray)msg.Content;
+      if(!cde.IsSet) cde.Signal();
+    }
+
+
+    #endregion MQTT publish-subscribe new
+
 
     public class Experiment {
       public int Nr { get; set; }

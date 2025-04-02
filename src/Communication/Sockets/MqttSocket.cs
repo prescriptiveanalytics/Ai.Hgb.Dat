@@ -245,19 +245,24 @@ namespace Ai.Hgb.Dat.Communication {
 
 
 
-      // parse received message V1
+      // message deserialization options:
+      // =================================
+      // parse received message V1 (preferred)
       var msg = converter.Deserialize<Message>(arg.ApplicationMessage.PayloadSegment.Array);
       var imsg = CreateIMessage(msg, genericType);
 
-      // parse received message V2
+      // parse received message V2 (deprecated)
       //Type message_genericTypeDef = typeof(Message<>);
       //Type[] typeArgs = { genericType };
       //var requestedType = message_genericTypeDef.MakeGenericType(typeArgs);
       //var imsg = (IMessage)converter.Deserialize(arg.ApplicationMessage.PayloadSegment.Array, requestedType);
 
-      // ISM workaround:
+      // parse received message V3 (MemoryPack workaround)
       //var param = arg.ApplicationMessage.PayloadSegment.Array;
       //IMessage imsg = converter.Deserialize<Message<DoubleTypedArray>>(param);
+      // =================================
+
+
 
       // backlog:
       //var genericMethod = converter.GetType().GetMethods().FirstOrDefault(

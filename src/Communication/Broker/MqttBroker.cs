@@ -36,12 +36,17 @@ namespace Ai.Hgb.Dat.Communication {
       set { websocketEnabled = value; }
     }
 
+    public bool LoggingEnabled { get; set; }
+
+    public bool InterceptorsEnabled { get; set; }
+
     public Microsoft.Extensions.Configuration.IConfiguration LogConfig { get; set; }
 
     private HostAddress address;
     private int websocketPort;
     private string websocketPattern;
     private bool mqttEnabled, websocketEnabled;
+    
 
     private MqttServer server;
     private WebApplication webapp;
@@ -54,6 +59,9 @@ namespace Ai.Hgb.Dat.Communication {
       this.websocketEnabled = websocketEnabled;
       this.websocketPort = websocketPort;
       this.websocketPattern = websocketPattern;
+
+      InterceptorsEnabled = true;
+      LoggingEnabled = true;
     }
 
     public void Dispose() {
@@ -94,12 +102,15 @@ namespace Ai.Hgb.Dat.Communication {
 
 
       server = new MqttFactory().CreateMqttServer(optionsBuilder.Build());
-      server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
-      server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
-      server.ClientConnectedAsync += Server_ClientConnectedAsync;
-      server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
-      server.StartedAsync += Server_StartedAsync;
-      server.StoppedAsync += Server_StoppedAsync;
+
+      if(InterceptorsEnabled) {
+        server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
+        server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
+        server.ClientConnectedAsync += Server_ClientConnectedAsync;
+        server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
+        server.StartedAsync += Server_StartedAsync;
+        server.StoppedAsync += Server_StoppedAsync;
+      }          
 
       return server.StartAsync();
     }
@@ -135,12 +146,16 @@ namespace Ai.Hgb.Dat.Communication {
 
       webapp = builder.Build();
       server = webapp.Services.GetService<MqttServer>();
-      server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
-      server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
-      server.ClientConnectedAsync += Server_ClientConnectedAsync;
-      server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
-      server.StartedAsync += Server_StartedAsync;
-      server.StoppedAsync += Server_StoppedAsync;
+
+      if(InterceptorsEnabled) {
+        server.InterceptingSubscriptionAsync += Server_InterceptingSubscriptionAsync;
+        server.InterceptingPublishAsync += Server_InterceptingPublishAsync;
+        server.ClientConnectedAsync += Server_ClientConnectedAsync;
+        server.ClientDisconnectedAsync += Server_ClientDisconnectedAsync;
+        server.StartedAsync += Server_StartedAsync;
+        server.StoppedAsync += Server_StoppedAsync;
+      }
+
 
       webapp.UseRouting();
       //webapp.UseMqttEndpoint();
@@ -163,32 +178,32 @@ namespace Ai.Hgb.Dat.Communication {
     #region event monitoring/interception
 
     private Task Server_StartedAsync(EventArgs arg) {
-      Log.Information($"Broker started.");
+      if(LoggingEnabled) Log.Information($"Broker started.");
       return Task.CompletedTask;
     }
 
     private Task Server_StoppedAsync(EventArgs arg) {
-      Log.Information($"Broker stopped.");
+      if (LoggingEnabled) Log.Information($"Broker stopped.");
       return Task.CompletedTask;
     }
 
     private Task Server_ClientConnectedAsync(ClientConnectedEventArgs arg) {
-      Log.Information($"Client {arg.ClientId} connected.");
+      if (LoggingEnabled) Log.Information($"Client {arg.ClientId} connected.");
       return Task.CompletedTask;
     }
 
     private Task Server_ClientDisconnectedAsync(ClientDisconnectedEventArgs arg) {
-      Log.Information($"Client {arg.ClientId} disconnected.");
+      if (LoggingEnabled) Log.Information($"Client {arg.ClientId} disconnected.");
       return Task.CompletedTask;
     }
 
     private Task Server_InterceptingSubscriptionAsync(InterceptingSubscriptionEventArgs arg) {
-      Log.Information($"Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");
+      if (LoggingEnabled) Log.Information($"Client {arg.ClientId} subscribed to topic {arg.TopicFilter.Topic}.");
       return Task.CompletedTask;
     }
 
     private Task Server_InterceptingPublishAsync(InterceptingPublishEventArgs arg) {
-      Log.Information($"Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");
+      if (LoggingEnabled) Log.Information($"Client {arg.ClientId} sends message to topic {arg.ApplicationMessage.Topic}.");
       return Task.CompletedTask;
     }
 

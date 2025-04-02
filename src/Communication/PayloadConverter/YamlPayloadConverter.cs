@@ -11,9 +11,9 @@ namespace Ai.Hgb.Dat.Communication {
     private ISerializer ser;
     private IDeserializer dser;
 
-    public YamlPayloadConverter() {
-      ser = new SerializerBuilder().Build();
-      dser = new DeserializerBuilder().Build();
+    public YamlPayloadConverter() {      
+      ser = new SerializerBuilder().IncludeNonPublicProperties().Build();
+      dser = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();
     }
 
     public T Deserialize<T>(byte[] payload) {
